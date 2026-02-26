@@ -1,0 +1,12 @@
+{
+  "frontend/src/index.css": "Global styles with dark navy + warm amber OKLCH color system, Google Fonts (Inter + Space Grotesk), and utility component classes for cards, buttons, and nav links.",
+  "frontend/tailwind.config.js": "Extended Tailwind config with custom font families (Inter/Space Grotesk), amber/navy color tokens, card shadow, glow shadow, and fade-in animation.",
+  "frontend/src/hooks/useQueries.ts": "React Query hooks for all backend operations — replaces the old single-call `useUploadPdf` with three chunked-upload hooks (`useStartUpload`, `useUploadChunk`, `useFinalizeUpload`), retains `useGetAllPdfMeta`, `useGetPdf`, `useDeletePdf`, and `useUpdatePdfTitle`.",
+  "frontend/src/components/Header.tsx": "Sticky top navigation bar with the logo image, Upload and Dashboard nav links with active state highlighting.",
+  "frontend/src/components/Footer.tsx": "Footer with copyright year, caffeine.ai attribution link with UTM params, and a heart icon in amber.",
+  "frontend/src/pages/HomePage.tsx": "Landing page with hero section, how-it-works feature cards, and trust indicators linking to upload and dashboard.",
+  "frontend/src/pages/UploadPage.tsx": "PDF upload page with a fully rewritten chunked-upload flow: splits the file into 500 KB chunks, calls `startUpload` → sequential `uploadChunk` (up to 3 retries each) → `finalizeUpload` with blob-storage progress; shows per-chunk progress bar, descriptive error messages, and a retry button without page refresh.",
+  "frontend/src/pages/DashboardPage.tsx": "Admin dashboard listing all uploaded PDFs with view, copy-link, delete, and inline title editing; each row shows a hover-reveal pencil icon that toggles an editable input with save/cancel controls, loading state, and error feedback.",
+  "frontend/src/pages/ViewerPage.tsx": "Public PDF viewer that fetches metadata via `useGetPdf`, then streams the PDF from its `ExternalBlob` direct URL using XHR with download-progress tracking; assembles a Blob object URL for the iframe, shows a progress bar while loading, and retains the title header and \"Next PDF\" navigation button.",
+  "frontend/src/App.tsx": "Main app with TanStack Router setup, root layout (Header + Outlet + Footer), and routes for /, /upload, /dashboard, and /view/:shareId."
+}

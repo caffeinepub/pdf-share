@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 9,
+  "summary": "A website for sharing PDFs with viewers. Users can upload PDFs and share them with others who can view them online.",
+  "architectural_notes": [
+    "PDF upload size workaround: split large PDFs into parts under 2MB and upload separately; IC ingress message limit is ~2MB"
+  ],
+  "known_issues": [
+    "Chunked upload feature build has failed multiple times; large PDFs (>2MB) cannot be uploaded in a single message on IC",
+    "PDF uploads failing even for small files (0.39 MB) — root cause unknown; full PDF integration redo requested"
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-build-a-pdf-upload-page-for-the-site-owner-admin-include-a-file-picker-restricted-to-pdf-files-a-title-input-field-and-an-upload-button-on-successful-upload-display-the-generated-shareable-link-for-that-pdf",
+      "title": "Build a PDF upload page for the site owner/admin: include a file picker restricted to .pdf files, a title input field, and an upload button. On successful upload, display the generated shareable link for that PDF.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-an-admin-dashboard-page-that-lists-all-uploaded-pdfs-showing-title-and-upload-date-each-entry-should-have-a-copy-link-button-and-a-delete-button",
+      "title": "Build an admin dashboard page that lists all uploaded PDFs showing title and upload date. Each entry should have a copy-link button and a delete button.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-public-pdf-viewer-page-accessible-at-view-shareid-fetch-the-pdf-binary-from-the-backend-by-share-id-and-render-it-inline-using-a-pdf-rendering-library-e-g-react-pdf-or-an-embedded-iframe-with-a-blob-url-show-the-pdf-title-at-the-top",
+      "title": "Build a public PDF viewer page accessible at /view/<shareId>. Fetch the PDF binary from the backend by share ID and render it inline using a PDF rendering library (e.g., react-pdf or an embedded <iframe> with a Blob URL). Show the PDF title at the top.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-apply-a-clean-modern-visual-theme-with-a-dark-navy-and-warm-amber-accent-color-palette-crisp-sans-serif-typography-card-based-layouts-with-subtle-shadows-and-smooth-hover-transitions-apply-this-style-consistently-across-all-pages",
+      "title": "Apply a clean, modern visual theme with a dark navy and warm amber accent color palette, crisp sans-serif typography, card-based layouts with subtle shadows, and smooth hover transitions. Apply this style consistently across all pages.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-use-a-generated-logo-image-pdf-share-logo-dim-256x64-png-in-the-site-header-navbar",
+      "title": "Use a generated logo image (pdf-share-logo.dim_256x64.png) in the site header/navbar.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-on-the-admin-dashboard-page-add-an-inline-edit-control-for-each-pdf-entry-s-title-each-row-should-include-an-edit-pencil-icon-button-that-opens-an-editable-text-field-pre-filled-with-the-current-title-and-a-save-button-on-save-call-the-backend-rename-function-and-refresh-the-list-show-a-loading-state-during-the-save-and-display-an-error-message-if-the-update-fails",
+      "title": "On the admin Dashboard page, add an inline edit control for each PDF entry's title. Each row should include an edit (pencil) icon button that opens an editable text field pre-filled with the current title and a save button. On save, call the backend rename function and refresh the list. Show a loading state during the save and display an error message if the update fails.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-on-the-pdf-viewer-page-view-shareid-add-a-next-pdf-button-that-navigates-the-user-to-the-viewer-page-of-the-next-uploaded-pdf-next-should-be-determined-by-upload-order-ascending-by-upload-timestamp-if-the-current-pdf-is-the-last-one-uploaded-the-button-should-be-hidden-or-disabled-fetch-the-full-list-of-pdf-metadata-from-the-backend-to-determine-the-next-share-id",
+      "title": "On the PDF viewer page (/view/<shareId>), add a 'Next PDF' button that navigates the user to the viewer page of the next uploaded PDF. 'Next' should be determined by upload order (ascending by upload timestamp). If the current PDF is the last one uploaded, the button should be hidden or disabled. Fetch the full list of PDF metadata from the backend to determine the next share ID.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rewrite-the-frontend-pdf-upload-flow-in-uploadpage-tsx-to-use-the-new-chunked-upload-backend-api-on-file-selection-split-the-pdf-arraybuffer-into-chunks-of-500-kb-call-startupload-to-initialize-then-sequentially-call-uploadchunk-for-each-chunk-with-retry-logic-up-to-3-retries-per-chunk-on-failure-then-call-finalizeupload-display-a-progress-bar-showing-chunk-upload-progress-e-g-3-of-7-chunks-uploaded-show-a-clear-error-message-with-the-specific-failure-reason-if-any-step-fails-and-allow-the-user-to-retry-the-upload",
+      "title": "Rewrite the frontend PDF upload flow in UploadPage.tsx to use the new chunked upload backend API. On file selection, split the PDF ArrayBuffer into chunks of 500 KB, call startUpload to initialize, then sequentially call uploadChunk for each chunk with retry logic (up to 3 retries per chunk on failure), then call finalizeUpload. Display a progress bar showing chunk upload progress (e.g., '3 of 7 chunks uploaded'). Show a clear error message with the specific failure reason if any step fails, and allow the user to retry the upload.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rewrite-the-frontend-pdf-retrieval-and-rendering-flow-in-viewerpage-tsx-to-use-the-new-chunked-retrieval-backend-api-fetch-the-chunk-count-via-getpdfchunks-shareid-then-sequentially-fetch-each-chunk-via-getpdfchunk-shareid-chunkindex-reassemble-all-chunks-into-a-single-blob-create-an-object-url-and-render-the-pdf-in-an-iframe-show-a-loading-progress-indicator-while-chunks-are-being-fetched-display-a-clear-error-message-if-retrieval-fails",
+      "title": "Rewrite the frontend PDF retrieval and rendering flow in ViewerPage.tsx to use the new chunked retrieval backend API. Fetch the chunk count via getPdfChunks(shareId), then sequentially fetch each chunk via getPdfChunk(shareId, chunkIndex), reassemble all chunks into a single Blob, create an object URL, and render the PDF in an iframe. Show a loading progress indicator while chunks are being fetched. Display a clear error message if retrieval fails.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-react-query-hooks-in-usequeries-ts-to-expose-the-new-chunked-upload-and-chunked-retrieval-functions-replacing-the-old-single-call-upload-and-fetch-hooks-ensure-the-dashboard-list-delete-and-rename-hooks-continue-to-work-with-the-updated-backend-api-signatures",
+      "title": "Update the React Query hooks in useQueries.ts to expose the new chunked upload and chunked retrieval functions, replacing the old single-call upload and fetch hooks. Ensure the dashboard list, delete, and rename hooks continue to work with the updated backend API signatures.",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "PDF upload functionality for the owner/admin",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "PDF viewer for shared documents accessible by viewers",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Shareable link generation for uploaded PDFs",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Create a backend data model and actor to store uploaded PDF metadata (title, file name, unique share ID, upload timestamp, and binary content) with functions to: upload a PDF, retrieve a PDF by share ID, list all uploaded PDFs, and delete a PDF by share ID.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Allow editing/changing the title of an uploaded PDF",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Add a backend function to update the title of an existing PDF entry by its share ID. The function should accept a share ID and a new title string, update the stored metadata, and return a success or error result.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Add a 'Next PDF' button on the viewer page that automatically navigates to the next uploaded PDF when the current one finishes",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Redo the PDF upload integration to fix upload failures (even for small files under 2MB)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Rewrite the backend PDF storage and upload logic in main.mo to use a reliable chunked upload approach: split incoming PDF binary data into small chunks (e.g., 500 KB each), store chunks separately in stable memory, and reassemble on retrieval. Expose backend functions: startUpload(title, shareId, totalChunks), uploadChunk(shareId, chunkIndex, chunkData), finalizeUpload(shareId), getPdfChunks(shareId) returning chunk count and metadata, getPdfChunk(shareId, chunkIndex) returning a single chunk blob, listPdfs(), deletePdf(shareId), and renamePdf(shareId, newTitle). Ensure all existing metadata fields (title, shareId, uploadTimestamp) are preserved.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "PDF Share",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

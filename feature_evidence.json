@@ -1,0 +1,65 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-rewrite-the-frontend-pdf-upload-flow-in-uploadpage-tsx-to-use-the-new-chunked-upload-backend-api-on-file-selection-split-the-pdf-arraybuffer-into-chunks-of-500-kb-call-startupload-to-initialize-then-sequentially-call-uploadchunk-for-each-chunk-with-retry-logic-up-to-3-retries-per-chunk-on-failure-then-call-finalizeupload-display-a-progress-bar-showing-chunk-upload-progress-e-g-3-of-7-chunks-uploaded-show-a-clear-error-message-with-the-specific-failure-reason-if-any-step-fails-and-allow-the-user-to-retry-the-upload",
+      "featureTitle": "Rewrite the frontend PDF upload flow in UploadPage.tsx to use the new chunked upload backend API. On file selection, split the PDF ArrayBuffer into chunks of 500 KB, call startUpload to initialize, then sequentially call uploadChunk for each chunk with retry logic (up to 3 retries per chunk on failure), then call finalizeUpload. Display a progress bar showing chunk upload progress (e.g., '3 of 7 chunks uploaded'). Show a clear error message with the specific failure reason if any step fails, and allow the user to retry the upload.",
+      "files": [
+        "frontend/src/pages/UploadPage.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-11"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-rewrite-the-frontend-pdf-retrieval-and-rendering-flow-in-viewerpage-tsx-to-use-the-new-chunked-retrieval-backend-api-fetch-the-chunk-count-via-getpdfchunks-shareid-then-sequentially-fetch-each-chunk-via-getpdfchunk-shareid-chunkindex-reassemble-all-chunks-into-a-single-blob-create-an-object-url-and-render-the-pdf-in-an-iframe-show-a-loading-progress-indicator-while-chunks-are-being-fetched-display-a-clear-error-message-if-retrieval-fails",
+      "featureTitle": "Rewrite the frontend PDF retrieval and rendering flow in ViewerPage.tsx to use the new chunked retrieval backend API. Fetch the chunk count via getPdfChunks(shareId), then sequentially fetch each chunk via getPdfChunk(shareId, chunkIndex), reassemble all chunks into a single Blob, create an object URL, and render the PDF in an iframe. Show a loading progress indicator while chunks are being fetched. Display a clear error message if retrieval fails.",
+      "files": [
+        "frontend/src/pages/ViewerPage.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-12"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-the-react-query-hooks-in-usequeries-ts-to-expose-the-new-chunked-upload-and-chunked-retrieval-functions-replacing-the-old-single-call-upload-and-fetch-hooks-ensure-the-dashboard-list-delete-and-rename-hooks-continue-to-work-with-the-updated-backend-api-signatures",
+      "featureTitle": "Update the React Query hooks in useQueries.ts to expose the new chunked upload and chunked retrieval functions, replacing the old single-call upload and fetch hooks. Ensure the dashboard list, delete, and rename hooks continue to work with the updated backend API signatures.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-13"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

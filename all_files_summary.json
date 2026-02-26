@@ -1,0 +1,23 @@
+{
+  "backend/main.mo": "Main Motoko actor implementing PDF share backend with chunked upload/finalize flow, user profiles, access control, and blob storage mixins.",
+  "backend/migration.mo": "Migration module that transforms old actor state (pdfStorage map) into new state shape (pdfMetadata + uploadStatuses) by adding a totalChunks field.",
+  "feature_evidence.json": "Feature evidence report mapping three implemented features (chunked upload flow, chunked retrieval flow, updated React Query hooks) to their source files and test IDs.",
+  "frontend-file-summaries.txt": "JSON document containing one-line summaries of each frontend source file, serving as a reference index for the frontend codebase.",
+  "frontend/index.css": "Tailwind base CSS file defining OKLCH-based CSS custom properties for light and dark color themes including background, foreground, card, and sidebar tokens.",
+  "frontend/index.html": "Minimal HTML entry point that mounts the React app into a root div and loads the main TypeScript module.",
+  "frontend/src/App.tsx": "Root React component that sets up TanStack Router with a shared Header/Footer layout and routes for home, upload, dashboard, and PDF viewer pages.",
+  "frontend/src/components/Footer.tsx": "Footer component displaying copyright year and a caffeine.ai attribution link with UTM parameters.",
+  "frontend/src/components/Header.tsx": "Sticky navigation header with a logo image, Upload link, and Dashboard link, with active-state highlighting based on current route.",
+  "frontend/src/hooks/useActor.ts": "React Query hook that creates and caches an authenticated or anonymous ICP backend actor, reinitializing and invalidating dependent queries when the identity changes.",
+  "frontend/src/hooks/useInternetIdentity.ts": "Provides a React context and hook for Internet Identity authentication, managing login/logout state and persisting identity across page reloads using DFINITY's AuthClient.",
+  "frontend/src/hooks/useQueries.ts": "Defines TanStack Query hooks for all backend interactions including fetching PDF metadata, chunked file uploads (start/chunk/finalize), deletion, and title updates.",
+  "frontend/src/index.css": "Global stylesheet that imports Google Fonts, configures Tailwind CSS with a dark navy/amber color palette via CSS custom properties, and defines reusable component utility classes.",
+  "frontend/src/main.tsx": "Application entry point that mounts the React app with TanStack Query and InternetIdentityProvider wrappers around the root App component.",
+  "frontend/src/pages/DashboardPage.tsx": "Dashboard page displaying a list of uploaded PDFs with per-row actions for copying share links, inline title editing, and deletion via a confirmation dialog.",
+  "frontend/src/pages/HomePage.tsx": "Marketing landing page with a hero section and a three-step 'How it works' feature grid, linking to the upload and dashboard pages.",
+  "frontend/src/pages/UploadPage.tsx": "Upload page that handles drag-and-drop or file-picker PDF selection, performs chunked uploads with progress tracking, and displays the resulting shareable link on completion.",
+  "frontend/src/pages/ViewerPage.tsx": "Public PDF viewer page that fetches a PDF by shareId, renders it in an iframe using a blob URL with XHR progress tracking, and provides copy-link and next-PDF navigation controls.",
+  "frontend/src/utils/urlParams.ts": "Utility functions for extracting URL parameters from query strings or hash-based routes, persisting them in sessionStorage, and cleaning sensitive params from the URL bar.",
+  "frontend/tailwind.config.js": "Tailwind CSS configuration defining dark-mode support, custom OKLCH-based color tokens, typography/container-query plugins, extended border radii, box shadows, and keyframe animations.",
+  "project_state.json": "Project state manifest tracking version, feature list, known issues (chunked PDF upload failures), architectural notes about IC's 2MB ingress limit, and fix-request status."
+}
