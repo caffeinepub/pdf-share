@@ -1,253 +1,168 @@
-import { useParams, useNavigate } from '@tanstack/react-router';
-import {
-    FileText,
-    AlertCircle,
-    ArrowLeft,
-    Copy,
-    CheckCircle,
-    Loader2,
-    ChevronRight,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useState, useEffect } from 'react';
+import { useParams, Link } from '@tanstack/react-router';
+import { ArrowLeft, Loader2, AlertCircle, ChevronRight } from 'lucide-react';
+import { useGetPdf, useListPdfs } from '../hooks/useQueries';
+import { useActor } from '../hooks/useActor';
 import { Progress } from '@/components/ui/progress';
-import { useGetPdf, useGetAllPdfMeta } from '@/hooks/useQueries';
-import { Link } from '@tanstack/react-router';
-import { useState, useMemo, useEffect, useRef } from 'react';
 
-export function ViewerPage() {
-    const { shareId } = useParams({ from: '/view/$shareId' });
-    const navigate = useNavigate();
+export default function ViewerPage() {
+  const { shareId } = useParams({ from: '/view/$shareId' });
+  const { actor, isFetching: actorFetching } = useActor();
 
-    // Metadata for title + next-PDF navigation
-    const { data: pdf, isLoading: metaLoading, isError: metaError } = useGetPdf(shareId);
-    const { data: allPdfs } = useGetAllPdfMeta();
-    const [copied, setCopied] = useState(false);
+  const {
+    data: pdf,
+    isLoading: metaLoading,
+    isPending: metaPending,
+    isError: metaError,
+    error: metaErrorObj,
+  } = useGetPdf(shareId);
 
-    // PDF blob URL state
-    const [pdfObjectUrl, setPdfObjectUrl] = useState<string | null>(null);
-    const [fetchError, setFetchError] = useState<string | null>(null);
-    const [fetchProgress, setFetchProgress] = useState<{ current: number; total: number } | null>(null);
-    const prevShareId = useRef<string | null>(null);
+  const { data: allPdfs } = useListPdfs();
 
-    const shareUrl = `${window.location.origin}/view/${shareId}`;
+  const [pdfObjectUrl, setPdfObjectUrl] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [loadProgress, setLoadProgress] = useState(0);
 
-    const handleCopy = async () => {
-        await navigator.clipboard.writeText(shareUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+  // Fetch PDF bytes from ExternalBlob direct URL via XHR for progress tracking
+  useEffect(() => {
+    if (!pdf?.file) return;
+
+    let cancelled = false;
+    setFetchError(null);
+    setLoadProgress(0);
+    setPdfObjectUrl(null);
+
+    const url = pdf.file.getDirectURL();
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+
+    xhr.onprogress = (event) => {
+      if (event.lengthComputable && !cancelled) {
+        setLoadProgress(Math.round((event.loaded / event.total) * 100));
+      }
     };
 
-    // Find the next PDF in upload order (ascending by uploadedAt)
-    const nextPdf = useMemo(() => {
-        if (!allPdfs || allPdfs.length === 0) return null;
-        const sorted = [...allPdfs].sort((a, b) => Number(a.uploadedAt - b.uploadedAt));
-        const currentIndex = sorted.findIndex((p) => p.shareId === shareId);
-        if (currentIndex === -1 || currentIndex === sorted.length - 1) return null;
-        return sorted[currentIndex + 1];
-    }, [allPdfs, shareId]);
-
-    const handleNextPdf = () => {
-        if (nextPdf) {
-            navigate({ to: '/view/$shareId', params: { shareId: nextPdf.shareId } });
-        }
+    xhr.onload = () => {
+      if (cancelled) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const blob = new Blob([xhr.response], { type: 'application/pdf' });
+        const objectUrl = URL.createObjectURL(blob);
+        setPdfObjectUrl(objectUrl);
+        setLoadProgress(100);
+      } else {
+        setFetchError(`Failed to load PDF (HTTP ${xhr.status})`);
+      }
     };
 
-    // Fetch PDF via direct URL from ExternalBlob once metadata is available
-    useEffect(() => {
-        if (!pdf) return;
-        if (prevShareId.current === shareId && pdfObjectUrl) return;
+    xhr.onerror = () => {
+      if (!cancelled) setFetchError('Network error while loading PDF.');
+    };
 
-        prevShareId.current = shareId;
+    xhr.send();
 
-        // Revoke previous object URL to avoid memory leaks
-        if (pdfObjectUrl) {
-            URL.revokeObjectURL(pdfObjectUrl);
-            setPdfObjectUrl(null);
-        }
-        setFetchError(null);
-        setFetchProgress(null);
+    return () => {
+      cancelled = true;
+      xhr.abort();
+    };
+  }, [pdf?.file]);
 
-        const loadPdf = async () => {
-            try {
-                const directUrl = pdf.file.getDirectURL();
+  // Revoke object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfObjectUrl) URL.revokeObjectURL(pdfObjectUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-                // Fetch with progress tracking via XHR
-                const objectUrl = await new Promise<string>((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('GET', directUrl, true);
-                    xhr.responseType = 'blob';
+  // Next PDF navigation
+  const nextPdf = (() => {
+    if (!allPdfs || allPdfs.length <= 1) return null;
+    const idx = allPdfs.findIndex((p) => p.shareId === shareId);
+    if (idx === -1) return null;
+    return allPdfs[(idx + 1) % allPdfs.length];
+  })();
 
-                    xhr.onprogress = (event) => {
-                        if (event.lengthComputable && event.total > 0) {
-                            setFetchProgress({
-                                current: event.loaded,
-                                total: event.total,
-                            });
-                        }
-                    };
+  // Actor is still initializing
+  const actorReady = !!actor && !actorFetching;
 
-                    xhr.onload = () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            const blob = new Blob([xhr.response], { type: 'application/pdf' });
-                            resolve(URL.createObjectURL(blob));
-                        } else {
-                            reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
-                        }
-                    };
+  // True loading: actor not ready yet, or meta query running, or PDF bytes not yet fetched
+  const isLoading =
+    !actorReady ||
+    metaLoading ||
+    metaPending ||
+    (!pdfObjectUrl && !fetchError && !metaError);
 
-                    xhr.onerror = () => reject(new Error('Network error while fetching PDF'));
-                    xhr.send();
-                });
+  const hasError = metaError || !!fetchError;
 
-                setPdfObjectUrl(objectUrl);
-                setFetchProgress(null);
-            } catch (err: unknown) {
-                const msg = err instanceof Error ? err.message : String(err);
-                setFetchError(`Failed to load PDF: ${msg}`);
-                setFetchProgress(null);
-            }
-        };
+  const loadingMessage = !actorReady
+    ? 'Initializing…'
+    : metaLoading || metaPending
+    ? 'Fetching PDF info…'
+    : 'Loading PDF…';
 
-        loadPdf();
-    }, [pdf, shareId]);
+  return (
+    <main className="min-h-screen flex flex-col">
+      {/* Top bar */}
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3">
+        <Link to="/gallery" className="text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft size={20} />
+        </Link>
+        <h1 className="flex-1 font-display font-semibold text-foreground truncate text-base">
+          {pdf?.title ?? (isLoading ? 'Loading…' : 'PDF Viewer')}
+        </h1>
+        {nextPdf && (
+          <Link
+            to="/view/$shareId"
+            params={{ shareId: nextPdf.shareId }}
+            className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+          >
+            Next <ChevronRight size={16} />
+          </Link>
+        )}
+      </div>
 
-    // Cleanup object URL on unmount
-    useEffect(() => {
-        return () => {
-            if (pdfObjectUrl) URL.revokeObjectURL(pdfObjectUrl);
-        };
-    }, [pdfObjectUrl]);
-
-    const isLoading = metaLoading || (!pdfObjectUrl && !fetchError && !metaError);
-    const isError = metaError || !!fetchError;
-
-    const fetchProgressPct =
-        fetchProgress && fetchProgress.total > 0
-            ? Math.round((fetchProgress.current / fetchProgress.total) * 100)
-            : null;
-
-    return (
-        <main className="flex-1 flex flex-col">
-            {/* Viewer header bar */}
-            <div className="border-b border-border bg-card/80 backdrop-blur-md px-4 sm:px-6 py-3">
-                <div className="container mx-auto flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <Link to="/dashboard">
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
-                            >
-                                <ArrowLeft className="h-4 w-4" />
-                            </Button>
-                        </Link>
-                        <div className="flex items-center gap-2 min-w-0">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15">
-                                <FileText className="h-4 w-4 text-primary" />
-                            </div>
-                            {metaLoading ? (
-                                <Skeleton className="h-5 w-40 bg-secondary" />
-                            ) : pdf ? (
-                                <h1 className="font-display font-semibold text-foreground truncate">
-                                    {pdf.title}
-                                </h1>
-                            ) : null}
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                        {pdf && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleCopy}
-                                className="gap-2 border-border hover:bg-primary/10 hover:border-primary/40"
-                            >
-                                {copied ? (
-                                    <CheckCircle className="h-3.5 w-3.5 text-primary" />
-                                ) : (
-                                    <Copy className="h-3.5 w-3.5" />
-                                )}
-                                <span className="hidden sm:inline text-xs">
-                                    {copied ? 'Copied!' : 'Copy Link'}
-                                </span>
-                            </Button>
-                        )}
-
-                        {nextPdf && (
-                            <Button
-                                size="sm"
-                                onClick={handleNextPdf}
-                                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                            >
-                                <span className="hidden sm:inline text-xs font-medium">
-                                    Next PDF
-                                </span>
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Button>
-                        )}
-                    </div>
-                </div>
+      {/* Loading state */}
+      {isLoading && !hasError && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 py-20">
+          <Loader2 className="animate-spin text-primary" size={40} />
+          {loadProgress > 0 && loadProgress < 100 && (
+            <div className="w-64">
+              <Progress value={loadProgress} className="h-2" />
+              <p className="text-center text-xs text-muted-foreground mt-1">{loadProgress}%</p>
             </div>
+          )}
+          <p className="text-muted-foreground text-sm">{loadingMessage}</p>
+        </div>
+      )}
 
-            {/* Content area */}
-            <div className="flex-1 flex flex-col">
-                {/* Loading */}
-                {isLoading && !isError && (
-                    <div className="flex-1 flex items-center justify-center p-8">
-                        <div className="text-center w-full max-w-xs">
-                            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
-                            {fetchProgressPct !== null ? (
-                                <>
-                                    <p className="text-muted-foreground mb-3">
-                                        Loading PDF… {fetchProgressPct}%
-                                    </p>
-                                    <Progress value={fetchProgressPct} className="h-2" />
-                                </>
-                            ) : (
-                                <p className="text-muted-foreground">Loading PDF…</p>
-                            )}
-                        </div>
-                    </div>
-                )}
+      {/* Error state */}
+      {hasError && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20">
+          <AlertCircle className="text-destructive" size={40} />
+          <p className="text-destructive font-medium text-lg">Failed to load PDF</p>
+          <p className="text-muted-foreground text-sm text-center max-w-sm">
+            {fetchError ??
+              (metaErrorObj instanceof Error
+                ? metaErrorObj.message
+                : 'The PDF metadata could not be retrieved. It may have been deleted or the link is invalid.')}
+          </p>
+          <Link to="/gallery" className="mt-2 text-primary hover:underline text-sm font-medium">
+            ← Back to Gallery
+          </Link>
+        </div>
+      )}
 
-                {/* Error / Not found */}
-                {isError && (
-                    <div className="flex-1 flex items-center justify-center p-8">
-                        <div className="card-glass p-10 text-center max-w-sm">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 mx-auto mb-4">
-                                <AlertCircle className="h-8 w-8 text-destructive" />
-                            </div>
-                            <h2 className="font-display text-xl font-bold text-foreground mb-2">
-                                PDF Not Found
-                            </h2>
-                            <p className="text-muted-foreground text-sm mb-6">
-                                {fetchError ??
-                                    "This PDF doesn't exist or may have been deleted. Check the link and try again."}
-                            </p>
-                            <Link to="/">
-                                <Button
-                                    variant="outline"
-                                    className="border-border hover:bg-secondary"
-                                >
-                                    Go Home
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-                )}
-
-                {/* PDF iframe */}
-                {!isLoading && !isError && pdfObjectUrl && (
-                    <iframe
-                        src={pdfObjectUrl}
-                        title={pdf?.title ?? 'PDF Viewer'}
-                        className="flex-1 w-full border-0"
-                        style={{ minHeight: 'calc(100vh - 130px)' }}
-                    />
-                )}
-            </div>
-        </main>
-    );
+      {/* PDF iframe */}
+      {pdfObjectUrl && !isLoading && !hasError && (
+        <iframe
+          src={pdfObjectUrl}
+          className="flex-1 w-full border-0"
+          style={{ minHeight: 'calc(100vh - 56px)' }}
+          title={pdf?.title ?? 'PDF Viewer'}
+        />
+      )}
+    </main>
+  );
 }

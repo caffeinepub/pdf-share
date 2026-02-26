@@ -190,10 +190,7 @@ actor {
     };
   };
 
-  public query ({ caller }) func getAllPdfMeta() : async [Metadata] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can list all PDFs");
-    };
+  public query ({ caller }) func listPdfs() : async [Metadata] {
     pdfMetadata.values().toArray().sort();
   };
 

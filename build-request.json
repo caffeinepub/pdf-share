@@ -1,57 +1,54 @@
 {
   "kind": "build_request",
-  "title": "Fix unauthorized error on chunked upload start",
-  "projectName": "PDF Share",
+  "title": "Fix PDF 'Open' button navigation on Gallery page",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-14",
-      "text": "Fix the backend `startUpload` function so that it correctly identifies authenticated callers. The current access control check is rejecting legitimate upload requests with 'Unauthorized: Only users can start uploads'. Inspect the caller identity check in the `startUpload` handler — ensure it accepts any non-anonymous principal (i.e., a real Internet Identity user) rather than applying an overly restrictive check such as comparing against a hardcoded admin principal or using a broken identity comparison. The fix must allow authenticated Internet Identity users to call `startUpload`, `uploadChunk`, and `finalizeUpload` successfully.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Failed to start upload: Unauthorized: Only users can start uploads"
-        ]
-      },
-      "acceptanceCriteria": [
-        "An authenticated Internet Identity user can call startUpload without receiving an Unauthorized error.",
-        "An anonymous (unauthenticated) caller is still rejected with an appropriate error.",
-        "uploadChunk and finalizeUpload succeed for an authenticated caller after a successful startUpload.",
-        "A 0.39 MB PDF can be uploaded end-to-end without authorization errors."
-      ]
-    },
-    {
-      "id": "REQ-15",
-      "text": "Verify that the frontend actor in `useActor.ts` / `useQueries.ts` is constructed with the authenticated identity (not anonymous) when the user is logged in via Internet Identity before calling `startUpload`. If the actor is being created anonymously even when the user is authenticated, ensure it is rebuilt with the correct identity so the backend receives a non-anonymous principal.",
+      "id": "REQ-18",
+      "text": "Fix the 'Open' button on the public gallery page (GalleryPage.tsx) so that clicking it successfully navigates the user to the PDF viewer page at /view/<shareId>. Investigate why navigation fails (e.g., broken route linking, missing shareId in card data, incorrect href/navigate call) and ensure each gallery card's 'Open' button correctly routes to the viewer for that PDF.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-6"
         ],
         "quotes": [
-          "Failed to start upload: Unauthorized: Only users can start uploads"
+          "The pdfs don't open when you click 'open'"
         ]
       },
       "acceptanceCriteria": [
-        "After login via Internet Identity, the actor used for upload calls carries the authenticated principal.",
-        "The startUpload call is made with the authenticated actor, not an anonymous one.",
-        "No Unauthorized error appears in the browser console during a PDF upload attempt by a logged-in user."
+        "Clicking 'Open' on any PDF card in the gallery navigates the browser to /view/<shareId> for that PDF",
+        "The viewer page loads and renders the PDF content after clicking 'Open'",
+        "Navigation works for all gallery entries regardless of upload order",
+        "No JavaScript errors are thrown when clicking 'Open'"
+      ]
+    },
+    {
+      "id": "REQ-19",
+      "text": "Verify that the ViewerPage.tsx correctly handles the shareId route parameter and that the chunked PDF retrieval flow (getPdfChunks → getPdfChunk → reassemble → iframe render) completes successfully when navigated to from the gallery. If the viewer page fails to load the PDF after navigation, fix the root cause (e.g., incorrect param extraction, actor not ready, premature fetch before actor is initialized).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "The pdfs don't open when you click 'open'"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The PDF viewer page successfully fetches and displays the PDF content when navigated to via the gallery 'Open' button",
+        "A loading progress indicator is shown while chunks are being fetched",
+        "An error message is shown if retrieval fails, rather than a blank or broken page"
       ]
     }
   ],
   "constraints": [
-    "Do not change the chunked upload API surface (startUpload, uploadChunk, finalizeUpload, getPdfChunks, getPdfChunk, listPdfs, deletePdf, renamePdf).",
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useActor.ts directly — propose safe alternatives if frontend actor construction needs adjustment.",
-    "Preserve all existing metadata fields: title, shareId, uploadTimestamp."
+    "Do not modify files under frontend/src/hooks/useActor.ts, frontend/src/hooks/useInternetIdentity.ts, frontend/src/main.tsx, or frontend/src/components/ui",
+    "The gallery page must remain publicly accessible without authentication"
   ],
   "nonGoals": [
-    "Changing the chunked upload chunk size or retry logic.",
-    "Modifying the PDF viewer or dashboard pages.",
-    "Adding new backend endpoints.",
-    "Altering the visual theme or UI layout."
+    "Redesigning the gallery page layout or visual theme",
+    "Changes to the backend chunked upload or retrieval logic",
+    "Adding new authentication flows"
   ],
   "imageRequirements": {
     "required": [],

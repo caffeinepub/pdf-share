@@ -1,16 +1,40 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T01:08:09.512Z",
-  "summary": "The diff addresses both REQ-14 and REQ-15. The backend startUpload, uploadChunk, and finalizeUpload handlers were updated to reject only anonymous callers (using caller.isAnonymous()) instead of the previous overly-restrictive check. The frontend UploadPage was updated to guard against unauthenticated access and check actor readiness before calling startUpload. Both requirements appear substantially implemented.",
-  "missing_requirements": [],
-  "hallucinated_features": [],
-  "confidence": 0.88,
+  "generatedAt": "2026-02-26T01:28:44.706Z",
+  "summary": "The diff addresses both REQ-18 and REQ-19. GalleryPage.tsx is updated to use useNavigate with explicit onClick handlers for reliable navigation to /view/$shareId. ViewerPage.tsx is updated to wait for actor initialization before fetching, shows loading progress, and displays error messages on failure. App.tsx correctly defines the /view/$shareId route. However, ViewerPage.tsx appears to use an ExternalBlob/direct URL approach (pdf.file.getDirectURL()) rather than the chunked retrieval flow (getPdfChunks → getPdfChunk → reassemble) described in REQ-19.",
+  "missing_requirements": [
+    {
+      "id": "REQ-19",
+      "requirement": "The chunked PDF retrieval flow (getPdfChunks → getPdfChunk → reassemble → iframe render) should complete successfully when navigated to from the gallery.",
+      "reason": "ViewerPage.tsx uses an XHR fetch against a direct URL (pdf.file.getDirectURL()) rather than the chunked getPdfChunks/getPdfChunk/reassemble flow explicitly specified in REQ-19. The AC mentions this specific flow and the diff does not show it being implemented.",
+      "evidence": [
+        "frontend/src/pages/ViewerPage.tsx"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "Next PDF navigation button in ViewerPage that cycles through all gallery PDFs",
+      "reason": "The diff implements a Next PDF navigation link in ViewerPage.tsx using useListPdfs to find the next PDF by index. This feature was not requested in REQ-18 or REQ-19.",
+      "evidence": [
+        "frontend/src/pages/ViewerPage.tsx"
+      ]
+    },
+    {
+      "description": "Full card click handler making the entire PdfCard div clickable in GalleryPage",
+      "reason": "The entire PdfCard div has an onClick, role=button, tabIndex, and onKeyDown handler making the whole card clickable. REQ-18 only asks for the Open button to navigate correctly.",
+      "evidence": [
+        "frontend/src/pages/GalleryPage.tsx"
+      ]
+    }
+  ],
+  "confidence": 0.72,
   "changed_files": [
-    "backend/main.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/Header.tsx",
-    "frontend/src/pages/UploadPage.tsx",
+    "frontend/src/App.tsx",
+    "frontend/src/pages/GalleryPage.tsx",
+    "frontend/src/pages/ViewerPage.tsx",
     "project_state.json"
   ]
 }

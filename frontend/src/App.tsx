@@ -2,9 +2,10 @@ import { RouterProvider, createRouter, createRoute, createRootRoute, Outlet } fr
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { HomePage } from './pages/HomePage';
+import GalleryPage from './pages/GalleryPage';
 import { UploadPage } from './pages/UploadPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { ViewerPage } from './pages/ViewerPage';
+import ViewerPage from './pages/ViewerPage';
 import { Toaster } from '@/components/ui/sonner';
 
 // Layout component wrapping all pages
@@ -30,6 +31,12 @@ const indexRoute = createRoute({
     component: HomePage,
 });
 
+const galleryRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/gallery',
+    component: GalleryPage,
+});
+
 const uploadRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/upload',
@@ -50,6 +57,7 @@ const viewerRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
     indexRoute,
+    galleryRoute,
     uploadRoute,
     dashboardRoute,
     viewerRoute,

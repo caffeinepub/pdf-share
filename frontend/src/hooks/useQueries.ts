@@ -4,17 +4,22 @@ import { type Metadata, type UploadParams, ExternalBlob } from '../backend';
 
 // ─── List / meta ────────────────────────────────────────────────────────────
 
-export function useGetAllPdfMeta() {
+export function useListPdfs() {
     const { actor, isFetching } = useActor();
 
     return useQuery<Metadata[]>({
         queryKey: ['pdfs'],
         queryFn: async () => {
             if (!actor) return [];
-            return actor.getAllPdfMeta();
+            return actor.listPdfs();
         },
         enabled: !!actor && !isFetching,
     });
+}
+
+// Keep legacy alias for existing consumers
+export function useGetAllPdfMeta() {
+    return useListPdfs();
 }
 
 export function useGetPdf(shareId: string) {

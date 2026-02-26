@@ -47,7 +47,6 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     deletePdf(shareId: string): Promise<void>;
     finalizeUpload(shareId: string, file: ExternalBlob): Promise<void>;
-    getAllPdfMeta(): Promise<Array<Metadata>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getPdf(shareId: string): Promise<Metadata>;
@@ -55,6 +54,7 @@ export interface backendInterface {
     getPdfChunks(shareId: string): Promise<ChunkInfo>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    listPdfs(): Promise<Array<Metadata>>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     startUpload(uploadParams: UploadParams): Promise<void>;
     updatePdfTitle(shareId: string, newTitle: string): Promise<void>;

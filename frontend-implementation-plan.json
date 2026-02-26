@@ -1,31 +1,38 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix unauthorized error on chunked upload start",
+  "title": "Fix PDF 'Open' button navigation on Gallery page",
   "requirements": [
     {
-      "id": "REQ-15",
-      "summary": "Verify that the frontend actor is constructed with the authenticated identity (not anonymous) when the user is logged in via Internet Identity before calling startUpload.",
+      "id": "REQ-18",
+      "summary": "Fix the 'Open' button on the public gallery page so that clicking it successfully navigates the user to the PDF viewer page at /view/<shareId>",
       "acceptanceCriteria": [
-        "After login via Internet Identity, the actor used for upload calls carries the authenticated principal.",
-        "The startUpload call is made with the authenticated actor, not an anonymous one.",
-        "No Unauthorized error appears in the browser console during a PDF upload attempt by a logged-in user."
+        "Clicking 'Open' on any PDF card in the gallery navigates the browser to /view/<shareId> for that PDF",
+        "The viewer page loads and renders the PDF content after clicking 'Open'",
+        "Navigation works for all gallery entries regardless of upload order",
+        "No JavaScript errors are thrown when clicking 'Open'"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useActor.ts",
+          "path": "frontend/src/pages/GalleryPage.tsx",
           "operation": "modify",
-          "description": "Review the actor creation logic to ensure that when an authenticated identity is available from the InternetIdentity context, the actor is constructed with that identity rather than anonymously. Verify that the actor invalidation and recreation occurs properly when the user logs in, so that subsequent backend calls (including startUpload) use the authenticated principal. If the actor is cached or created before authentication completes, ensure it is rebuilt after login."
-        },
+          "description": "Fix the 'Open' button navigation by ensuring the shareId from the PDF metadata is correctly passed to the router navigation call. Verify that the button's onClick handler or Link component properly constructs the /view/<shareId> route using the shareId field from each PDF's Metadata object. Replace any broken href or navigate calls with a working TanStack Router Link component or useNavigate hook that references the correct route path."
+        }
+      ]
+    },
+    {
+      "id": "REQ-19",
+      "summary": "Verify that the ViewerPage correctly handles the shareId route parameter and that the chunked PDF retrieval flow completes successfully when navigated to from the gallery",
+      "acceptanceCriteria": [
+        "The PDF viewer page successfully fetches and displays the PDF content when navigated to via the gallery 'Open' button",
+        "A loading progress indicator is shown while chunks are being fetched",
+        "An error message is shown if retrieval fails, rather than a blank or broken page"
+      ],
+      "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/pages/ViewerPage.tsx",
           "operation": "modify",
-          "description": "Review the useStartUpload hook and other upload-related query hooks (useUploadChunk, useFinalizeUpload) to confirm they are using the actor from useActor and that the actor is not being overridden or replaced with an anonymous actor. Ensure that these hooks correctly depend on the authenticated actor so that startUpload, uploadChunk, and finalizeUpload are called with the authenticated identity. Add error handling to display a user-friendly message if an 'Unauthorized' error occurs."
-        },
-        {
-          "path": "frontend/src/pages/UploadPage.tsx",
-          "operation": "modify",
-          "description": "Ensure that the UploadPage checks for user authentication before allowing a file upload. If the user is not authenticated, display a prompt or redirect to login. Verify that the upload flow (startUpload, uploadChunk, finalizeUpload) is initiated only after the authenticated actor is available. Add visual feedback or error messages if an authorization error occurs during the upload process."
+          "description": "Verify that the ViewerPage correctly extracts the shareId from the route params using TanStack Router's useParams hook and that the PDF fetch sequence (getPdfChunks → getPdfChunk loop → blob reassembly → iframe render) executes only after the actor is initialized. Add safeguards to prevent premature fetch attempts before the actor is ready. Ensure loading states are properly displayed during chunk retrieval and that error states are shown with user-friendly messages if the PDF cannot be loaded."
         }
       ]
     }

@@ -1,10 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the unauthorized error that prevents authenticated Internet Identity users from starting a chunked PDF upload.
+**Goal:** Fix the "Open" button on the public gallery page so that clicking it correctly navigates to the PDF viewer and displays the PDF.
 
 **Planned changes:**
-- Fix the backend `startUpload` handler to accept any non-anonymous principal instead of applying an overly restrictive identity check.
-- Ensure the frontend actor used for upload calls is constructed with the authenticated identity (not anonymous) when the user is logged in via Internet Identity.
+- Investigate and fix the "Open" button in `GalleryPage.tsx` so it correctly navigates to `/view/<shareId>` for each PDF card
+- Ensure `shareId` is properly available in each gallery card's data and passed to the navigation/href call
+- Verify `ViewerPage.tsx` correctly extracts the `shareId` route parameter and initiates the chunked PDF retrieval flow
+- Fix any issues with the chunked fetch sequence (getPdfChunks → getPdfChunk → reassemble → iframe render) when arriving from the gallery
+- Show a loading progress indicator while chunks are being fetched
+- Show an error message if PDF retrieval fails instead of a blank or broken page
 
-**User-visible outcome:** A logged-in Internet Identity user can upload a PDF end-to-end (startUpload → uploadChunk → finalizeUpload) without receiving an "Unauthorized" error. Anonymous callers are still rejected.
+**User-visible outcome:** Users can click "Open" on any PDF card in the gallery and be taken to the viewer page where the PDF loads and displays correctly.

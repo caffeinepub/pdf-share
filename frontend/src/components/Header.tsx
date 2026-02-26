@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router';
-import { FileText, LayoutDashboard, Upload, LogIn, LogOut, Loader2 } from 'lucide-react';
+import { FileText, LayoutDashboard, Upload, LogIn, LogOut, Loader2, BookOpen } from 'lucide-react';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,17 @@ export function Header() {
 
                 {/* Navigation + Auth */}
                 <nav className="flex items-center gap-1 sm:gap-2">
+                    <Link
+                        to="/gallery"
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                            isActive('/gallery')
+                                ? 'bg-primary/15 text-primary'
+                                : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                        }`}
+                    >
+                        <BookOpen className="h-4 w-4" />
+                        <span className="hidden sm:inline">Gallery</span>
+                    </Link>
                     <Link
                         to="/upload"
                         className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${

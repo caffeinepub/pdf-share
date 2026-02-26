@@ -25,6 +25,7 @@ export const UserRole = IDL.Variant({
   'guest' : IDL.Null,
 });
 export const ExternalBlob = IDL.Vec(IDL.Nat8);
+export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const Time = IDL.Int;
 export const Metadata = IDL.Record({
   'title' : IDL.Text,
@@ -34,7 +35,6 @@ export const Metadata = IDL.Record({
   'totalChunks' : IDL.Nat,
   'uploadedAt' : Time,
 });
-export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const ChunkIndex = IDL.Nat;
 export const Chunk = IDL.Vec(IDL.Nat8);
 export const ChunkInfo = IDL.Record({
@@ -79,7 +79,6 @@ export const idlService = IDL.Service({
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'deletePdf' : IDL.Func([IDL.Text], [], []),
   'finalizeUpload' : IDL.Func([IDL.Text, ExternalBlob], [], []),
-  'getAllPdfMeta' : IDL.Func([], [IDL.Vec(Metadata)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getPdf' : IDL.Func([IDL.Text], [Metadata], ['query']),
@@ -91,6 +90,7 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'listPdfs' : IDL.Func([], [IDL.Vec(Metadata)], ['query']),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'startUpload' : IDL.Func([UploadParams], [], []),
   'updatePdfTitle' : IDL.Func([IDL.Text, IDL.Text], [], []),
@@ -117,6 +117,7 @@ export const idlFactory = ({ IDL }) => {
     'guest' : IDL.Null,
   });
   const ExternalBlob = IDL.Vec(IDL.Nat8);
+  const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const Time = IDL.Int;
   const Metadata = IDL.Record({
     'title' : IDL.Text,
@@ -126,7 +127,6 @@ export const idlFactory = ({ IDL }) => {
     'totalChunks' : IDL.Nat,
     'uploadedAt' : Time,
   });
-  const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const ChunkIndex = IDL.Nat;
   const Chunk = IDL.Vec(IDL.Nat8);
   const ChunkInfo = IDL.Record({
@@ -171,7 +171,6 @@ export const idlFactory = ({ IDL }) => {
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'deletePdf' : IDL.Func([IDL.Text], [], []),
     'finalizeUpload' : IDL.Func([IDL.Text, ExternalBlob], [], []),
-    'getAllPdfMeta' : IDL.Func([], [IDL.Vec(Metadata)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getPdf' : IDL.Func([IDL.Text], [Metadata], ['query']),
@@ -183,6 +182,7 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'listPdfs' : IDL.Func([], [IDL.Vec(Metadata)], ['query']),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'startUpload' : IDL.Func([UploadParams], [], []),
     'updatePdfTitle' : IDL.Func([IDL.Text, IDL.Text], [], []),
