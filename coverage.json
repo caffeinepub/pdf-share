@@ -1,35 +1,46 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T01:28:44.708Z",
+  "generatedAt": "2026-02-26T03:06:20.730Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 2,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
-        "id": "REQ-18",
-        "summary": "Fix the 'Open' button on the public gallery page (GalleryPage.tsx) so that clicking it successfully navigates the user to the PDF viewer page at /view/<shareId>. Investigate why navigation fails (e.g., broken route linking, missing shareId in card data, incorrect href/navigate call) and ensure each gallery card's 'Open' button correctly routes to the viewer for that PDF.",
+        "id": "REQ-29",
+        "summary": "Create a new page at '/feed' (or '/all') that displays all PDFs uploaded by all users/accounts in a single, publicly accessible feed. Each entry should show the PDF title, uploader's principal (truncated for readability), upload date, and an 'Open' button that navigates to the existing viewer at /view/<shareId>. The page must be accessible without authentication, using the existing anonymous-compatible listPdfs() backend call. Sort entries by upload timestamp descending (newest first).",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/GalleryPage.tsx"
+          "frontend/src/pages/FeedPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/GalleryPage.tsx"
+          "frontend/src/pages/FeedPage.tsx"
         ]
       },
       {
-        "id": "REQ-19",
-        "summary": "Verify that the ViewerPage.tsx correctly handles the shareId route parameter and that the chunked PDF retrieval flow (getPdfChunks → getPdfChunk → reassemble → iframe render) completes successfully when navigated to from the gallery. If the viewer page fails to load the PDF after navigation, fix the root cause (e.g., incorrect param extraction, actor not ready, premature fetch before actor is initialized).",
+        "id": "REQ-30",
+        "summary": "Add a 'Feed' navigation link in the site header (Header.tsx) that routes to the new all-PDFs feed page. The link should follow the same active-route highlighting pattern used by the existing Gallery, Upload, and Dashboard nav links.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ViewerPage.tsx"
+          "frontend/src/components/Header.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ViewerPage.tsx"
+          "frontend/src/components/Header.tsx"
+        ]
+      },
+      {
+        "id": "REQ-31",
+        "summary": "Register the new feed page route in App.tsx (TanStack Router) so that navigating to '/feed' renders the new FeedPage component. Ensure the route does not require authentication and does not conflict with existing routes.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/App.tsx"
         ]
       }
     ]
@@ -40,8 +51,8 @@
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
-    "frontend/src/pages/GalleryPage.tsx",
-    "frontend/src/pages/ViewerPage.tsx",
+    "frontend/src/components/Header.tsx",
+    "frontend/src/pages/FeedPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

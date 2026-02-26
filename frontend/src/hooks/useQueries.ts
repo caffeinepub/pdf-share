@@ -1,6 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import { type Metadata, type UploadParams, ExternalBlob } from '../backend';
+import { type Metadata, type UploadParams, ExternalBlob, type backendInterface } from '../backend';
+import type { Principal } from '@icp-sdk/core/principal';
+
+// ─── Helper: get actor from query cache reactively ───────────────────────────
+
+function getActorFromCache(queryClient: ReturnType<typeof useQueryClient>): backendInterface | null {
+    const queries = queryClient.getQueriesData<backendInterface>({ queryKey: ['actor'] });
+    for (const [, data] of queries) {
+        if (data) return data;
+    }
+    return null;
+}
 
 // ─── List / meta ────────────────────────────────────────────────────────────
 
@@ -39,18 +50,19 @@ export function useGetPdf(shareId: string) {
 // ─── Chunked upload ──────────────────────────────────────────────────────────
 
 export function useStartUpload() {
-    const { actor } = useActor();
+    const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async (uploadParams: UploadParams) => {
-            if (!actor) throw new Error('Actor not available');
+            const actor = getActorFromCache(queryClient);
+            if (!actor) throw new Error('Connection not ready. Please wait a moment and try again.');
             await actor.startUpload(uploadParams);
         },
     });
 }
 
 export function useUploadChunk() {
-    const { actor } = useActor();
+    const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async ({
@@ -62,14 +74,14 @@ export function useUploadChunk() {
             chunkIndex: bigint;
             chunkData: Uint8Array;
         }) => {
-            if (!actor) throw new Error('Actor not available');
+            const actor = getActorFromCache(queryClient);
+            if (!actor) throw new Error('Connection not ready. Please wait a moment and try again.');
             await actor.uploadChunk(shareId, chunkIndex, chunkData);
         },
     });
 }
 
 export function useFinalizeUpload() {
-    const { actor } = useActor();
     const queryClient = useQueryClient();
 
     return useMutation({
@@ -82,7 +94,8 @@ export function useFinalizeUpload() {
             fileBytes: Uint8Array<ArrayBuffer>;
             onProgress?: (pct: number) => void;
         }) => {
-            if (!actor) throw new Error('Actor not available');
+            const actor = getActorFromCache(queryClient);
+            if (!actor) throw new Error('Connection not ready. Please wait a moment and try again.');
             const blob = ExternalBlob.fromBytes(fileBytes).withUploadProgress(
                 onProgress ?? (() => {})
             );
@@ -97,12 +110,12 @@ export function useFinalizeUpload() {
 // ─── Delete / rename ─────────────────────────────────────────────────────────
 
 export function useDeletePdf() {
-    const { actor } = useActor();
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async (shareId: string) => {
-            if (!actor) throw new Error('Actor not available');
+            const actor = getActorFromCache(queryClient);
+            if (!actor) throw new Error('Connection not ready. Please wait a moment and try again.');
             await actor.deletePdf(shareId);
         },
         onSuccess: () => {
@@ -112,16 +125,62 @@ export function useDeletePdf() {
 }
 
 export function useUpdatePdfTitle() {
-    const { actor } = useActor();
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async ({ shareId, newTitle }: { shareId: string; newTitle: string }) => {
-            if (!actor) throw new Error('Actor not available');
+            const actor = getActorFromCache(queryClient);
+            if (!actor) throw new Error('Connection not ready. Please wait a moment and try again.');
             await actor.updatePdfTitle(shareId, newTitle);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['pdfs'] });
+        },
+    });
+}
+
+// ─── Admin: banned users ─────────────────────────────────────────────────────
+
+export function useBannedUsers() {
+    const { actor, isFetching } = useActor();
+
+    return useQuery<Principal[]>({
+        queryKey: ['bannedUsers'],
+        queryFn: async () => {
+            if (!actor) return [];
+            return actor.listBannedUsers();
+        },
+        enabled: !!actor && !isFetching,
+        retry: false,
+    });
+}
+
+export function useKickUser() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (user: Principal) => {
+            const actor = getActorFromCache(queryClient);
+            if (!actor) throw new Error('Connection not ready. Please wait a moment and try again.');
+            await actor.kickUser(user);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['bannedUsers'] });
+        },
+    });
+}
+
+export function useUnbanUser() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (user: Principal) => {
+            const actor = getActorFromCache(queryClient);
+            if (!actor) throw new Error('Connection not ready. Please wait a moment and try again.');
+            await actor.unbanUser(user);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['bannedUsers'] });
         },
     });
 }

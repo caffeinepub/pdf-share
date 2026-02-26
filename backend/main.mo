@@ -1,16 +1,18 @@
 import Text "mo:core/Text";
 import Iter "mo:core/Iter";
 import Map "mo:core/Map";
-import Principal "mo:core/Principal";
 import Order "mo:core/Order";
 import Time "mo:core/Time";
 import Runtime "mo:core/Runtime";
 import Array "mo:core/Array";
 import Nat "mo:core/Nat";
+import Principal "mo:core/Principal";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 import MixinStorage "blob-storage/Mixin";
 import Storage "blob-storage/Storage";
+
+
 
 actor {
   include MixinStorage();
@@ -59,6 +61,7 @@ actor {
 
   let userProfiles = Map.empty<Principal, UserProfile>();
   let pdfMetadata = Map.empty<Text, Metadata>();
+  let bannedUsers = Map.empty<Principal, ()>();
   let uploadStatuses = Map.empty<Text, UploadStatus>();
 
   public type ChunkInfo = {
@@ -88,10 +91,7 @@ actor {
   };
 
   public shared ({ caller }) func startUpload(uploadParams : UploadParams) : async () {
-    // Accept all authenticated users except anonymous ones.
-    if (caller.isAnonymous()) {
-      Runtime.trap("Unauthorized: Only authenticated users can start uploads");
-    };
+    checkBannedUser(caller);
 
     switch (pdfMetadata.get(uploadParams.shareId)) {
       case (?_) { Runtime.trap("PDF with this share ID already exists!") };
@@ -112,10 +112,7 @@ actor {
   };
 
   public shared ({ caller }) func uploadChunk(shareId : Text, chunkIndex : Nat, chunkData : Chunk) : async () {
-    // Accept all authenticated users except anonymous ones.
-    if (caller.isAnonymous()) {
-      Runtime.trap("Unauthorized: Only authenticated users can upload chunks");
-    };
+    checkBannedUser(caller);
 
     switch (uploadStatuses.get(shareId)) {
       case (?uploadStatus) {
@@ -130,10 +127,7 @@ actor {
   };
 
   public shared ({ caller }) func finalizeUpload(shareId : Text, file : Storage.ExternalBlob) : async () {
-    // Accept all authenticated users except anonymous ones.
-    if (caller.isAnonymous()) {
-      Runtime.trap("Unauthorized: Only authenticated users can finalize uploads");
-    };
+    checkBannedUser(caller);
 
     switch (uploadStatuses.get(shareId)) {
       case (?uploadStatus) {
@@ -215,5 +209,36 @@ actor {
       Runtime.trap("PDF with shareId does not exist!");
     };
     pdfMetadata.remove(shareId);
+  };
+
+  public shared ({ caller }) func kickUser(user : Principal) : async () {
+    onlyAdmin(caller);
+    bannedUsers.add(user, ());
+  };
+
+  public shared ({ caller }) func unbanUser(user : Principal) : async () {
+    onlyAdmin(caller);
+    bannedUsers.remove(user);
+  };
+
+  public query ({ caller }) func listBannedUsers() : async [Principal] {
+    onlyAdmin(caller);
+    bannedUsers.keys().toArray();
+  };
+
+  func checkBannedUser(caller : Principal) {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Only authenticated users can perform this action");
+    };
+    switch (bannedUsers.get(caller)) {
+      case (?()) { Runtime.trap("You have been banned from uploading") };
+      case (null) {};
+    };
+  };
+
+  func onlyAdmin(caller : Principal) {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Admin access required");
+    };
   };
 };

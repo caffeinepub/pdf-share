@@ -1,54 +1,79 @@
 {
   "kind": "build_request",
-  "title": "Fix PDF 'Open' button navigation on Gallery page",
-  "priority": "high",
+  "title": "Add public all-PDFs feed page aggregating uploads from all accounts",
+  "projectName": "PDF Share",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-18",
-      "text": "Fix the 'Open' button on the public gallery page (GalleryPage.tsx) so that clicking it successfully navigates the user to the PDF viewer page at /view/<shareId>. Investigate why navigation fails (e.g., broken route linking, missing shareId in card data, incorrect href/navigate call) and ensure each gallery card's 'Open' button correctly routes to the viewer for that PDF.",
+      "id": "REQ-29",
+      "text": "Create a new page at '/feed' (or '/all') that displays all PDFs uploaded by all users/accounts in a single, publicly accessible feed. Each entry should show the PDF title, uploader's principal (truncated for readability), upload date, and an 'Open' button that navigates to the existing viewer at /view/<shareId>. The page must be accessible without authentication, using the existing anonymous-compatible listPdfs() backend call. Sort entries by upload timestamp descending (newest first).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-7"
         ],
         "quotes": [
-          "The pdfs don't open when you click 'open'"
+          "Make a page where all pdf from all accounts go"
         ]
       },
       "acceptanceCriteria": [
-        "Clicking 'Open' on any PDF card in the gallery navigates the browser to /view/<shareId> for that PDF",
-        "The viewer page loads and renders the PDF content after clicking 'Open'",
-        "Navigation works for all gallery entries regardless of upload order",
-        "No JavaScript errors are thrown when clicking 'Open'"
+        "A new route '/feed' (or '/all') renders the all-PDFs page without requiring login.",
+        "All PDFs from all uploaders are listed, fetched via the existing listPdfs() query hook.",
+        "Each card displays: PDF title, uploader principal (truncated), upload date, and an 'Open' button.",
+        "Clicking 'Open' navigates to /view/<shareId> for the correct PDF.",
+        "Entries are sorted newest-first by upload timestamp.",
+        "The page is linked from the site header/navigation.",
+        "The page matches the existing dark navy and amber visual theme (card layout, shadows, hover transitions)."
       ]
     },
     {
-      "id": "REQ-19",
-      "text": "Verify that the ViewerPage.tsx correctly handles the shareId route parameter and that the chunked PDF retrieval flow (getPdfChunks → getPdfChunk → reassemble → iframe render) completes successfully when navigated to from the gallery. If the viewer page fails to load the PDF after navigation, fix the root cause (e.g., incorrect param extraction, actor not ready, premature fetch before actor is initialized).",
+      "id": "REQ-30",
+      "text": "Add a 'Feed' navigation link in the site header (Header.tsx) that routes to the new all-PDFs feed page. The link should follow the same active-route highlighting pattern used by the existing Gallery, Upload, and Dashboard nav links.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-7"
         ],
         "quotes": [
-          "The pdfs don't open when you click 'open'"
+          "Make a page where all pdf from all accounts go"
         ]
       },
       "acceptanceCriteria": [
-        "The PDF viewer page successfully fetches and displays the PDF content when navigated to via the gallery 'Open' button",
-        "A loading progress indicator is shown while chunks are being fetched",
-        "An error message is shown if retrieval fails, rather than a blank or broken page"
+        "A 'Feed' link appears in the top navigation bar alongside existing links.",
+        "The link routes to the new feed page.",
+        "The link is highlighted/active when the user is on the feed page.",
+        "No other navigation links are changed or removed."
+      ]
+    },
+    {
+      "id": "REQ-31",
+      "text": "Register the new feed page route in App.tsx (TanStack Router) so that navigating to '/feed' renders the new FeedPage component. Ensure the route does not require authentication and does not conflict with existing routes.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-7"
+        ],
+        "quotes": [
+          "Make a page where all pdf from all accounts go"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Navigating directly to '/feed' renders the FeedPage without a 404 or redirect.",
+        "The route is public (no auth guard).",
+        "All existing routes (/, /upload, /dashboard, /view/:shareId) continue to work unchanged."
       ]
     }
   ],
   "constraints": [
-    "Do not modify files under frontend/src/hooks/useActor.ts, frontend/src/hooks/useInternetIdentity.ts, frontend/src/main.tsx, or frontend/src/components/ui",
-    "The gallery page must remain publicly accessible without authentication"
+    "Do not modify frontend/src/hooks/useActor.ts, frontend/src/hooks/useInternetIdentity.ts, frontend/src/main.tsx, or any files under frontend/src/components/ui.",
+    "Reuse the existing listPdfs() React Query hook from useQueries.ts — do not create a new backend function.",
+    "Do not alter the existing Gallery page (GalleryPage.tsx) or its route."
   ],
   "nonGoals": [
-    "Redesigning the gallery page layout or visual theme",
-    "Changes to the backend chunked upload or retrieval logic",
-    "Adding new authentication flows"
+    "Adding per-user profile pages or filtering the feed by a specific user.",
+    "Adding pagination or infinite scroll (a flat list is acceptable for now).",
+    "Any backend changes — the existing listPdfs() already returns all PDFs from all accounts.",
+    "Changing authentication requirements for any existing page."
   ],
   "imageRequirements": {
     "required": [],

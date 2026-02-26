@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-the-open-button-on-the-public-gallery-page-gallerypage-tsx-so-that-clicking-it-successfully-navigates-the-user-to-the-pdf-viewer-page-at-view-shareid-investigate-why-navigation-fails-e-g-broken-route-linking-missing-shareid-in-card-data-incorrect-href-navigate-call-and-ensure-each-gallery-card-s-open-button-correctly-routes-to-the-viewer-for-that-pdf",
-      "featureTitle": "Fix the 'Open' button on the public gallery page (GalleryPage.tsx) so that clicking it successfully navigates the user to the PDF viewer page at /view/<shareId>. Investigate why navigation fails (e.g., broken route linking, missing shareId in card data, incorrect href/navigate call) and ensure each gallery card's 'Open' button correctly routes to the viewer for that PDF.",
+      "featureId": "feature-create-a-new-page-at-feed-or-all-that-displays-all-pdfs-uploaded-by-all-users-accounts-in-a-single-publicly-accessible-feed-each-entry-should-show-the-pdf-title-uploader-s-principal-truncated-for-readability-upload-date-and-an-open-button-that-navigates-to-the-existing-viewer-at-view-shareid-the-page-must-be-accessible-without-authentication-using-the-existing-anonymous-compatible-listpdfs-backend-call-sort-entries-by-upload-timestamp-descending-newest-first",
+      "featureTitle": "Create a new page at '/feed' (or '/all') that displays all PDFs uploaded by all users/accounts in a single, publicly accessible feed. Each entry should show the PDF title, uploader's principal (truncated for readability), upload date, and an 'Open' button that navigates to the existing viewer at /view/<shareId>. The page must be accessible without authentication, using the existing anonymous-compatible listPdfs() backend call. Sort entries by upload timestamp descending (newest first).",
       "files": [
-        "frontend/src/pages/GalleryPage.tsx"
+        "frontend/src/pages/FeedPage.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -17,15 +17,15 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-18"
+        "REQ-29"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-verify-that-the-viewerpage-tsx-correctly-handles-the-shareid-route-parameter-and-that-the-chunked-pdf-retrieval-flow-getpdfchunks-getpdfchunk-reassemble-iframe-render-completes-successfully-when-navigated-to-from-the-gallery-if-the-viewer-page-fails-to-load-the-pdf-after-navigation-fix-the-root-cause-e-g-incorrect-param-extraction-actor-not-ready-premature-fetch-before-actor-is-initialized",
-      "featureTitle": "Verify that the ViewerPage.tsx correctly handles the shareId route parameter and that the chunked PDF retrieval flow (getPdfChunks → getPdfChunk → reassemble → iframe render) completes successfully when navigated to from the gallery. If the viewer page fails to load the PDF after navigation, fix the root cause (e.g., incorrect param extraction, actor not ready, premature fetch before actor is initialized).",
+      "featureId": "feature-add-a-feed-navigation-link-in-the-site-header-header-tsx-that-routes-to-the-new-all-pdfs-feed-page-the-link-should-follow-the-same-active-route-highlighting-pattern-used-by-the-existing-gallery-upload-and-dashboard-nav-links",
+      "featureTitle": "Add a 'Feed' navigation link in the site header (Header.tsx) that routes to the new all-PDFs feed page. The link should follow the same active-route highlighting pattern used by the existing Gallery, Upload, and Dashboard nav links.",
       "files": [
-        "frontend/src/pages/ViewerPage.tsx"
+        "frontend/src/components/Header.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -37,7 +37,27 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-19"
+        "REQ-30"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-register-the-new-feed-page-route-in-app-tsx-tanstack-router-so-that-navigating-to-feed-renders-the-new-feedpage-component-ensure-the-route-does-not-require-authentication-and-does-not-conflict-with-existing-routes",
+      "featureTitle": "Register the new feed page route in App.tsx (TanStack Router) so that navigating to '/feed' renders the new FeedPage component. Ensure the route does not require authentication and does not conflict with existing routes.",
+      "files": [
+        "frontend/src/App.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-31"
       ],
       "confidence": "high"
     }

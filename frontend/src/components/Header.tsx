@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router';
-import { FileText, LayoutDashboard, Upload, LogIn, LogOut, Loader2, BookOpen } from 'lucide-react';
+import { FileText, LayoutDashboard, Upload, LogIn, LogOut, Loader2, BookOpen, Rss } from 'lucide-react';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,10 @@ export function Header() {
     const isAuthenticated = !!identity;
     const isLoggingIn = loginStatus === 'logging-in';
 
-    const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
+    const isActive = (path: string) => {
+        if (path === '/') return pathname === '/';
+        return pathname === path || pathname.startsWith(path + '/');
+    };
 
     const handleAuth = async () => {
         if (isAuthenticated) {
@@ -60,15 +63,26 @@ export function Header() {
                 {/* Navigation + Auth */}
                 <nav className="flex items-center gap-1 sm:gap-2">
                     <Link
-                        to="/gallery"
+                        to="/"
                         className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
-                            isActive('/gallery')
+                            isActive('/')
                                 ? 'bg-primary/15 text-primary'
                                 : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                         }`}
                     >
                         <BookOpen className="h-4 w-4" />
                         <span className="hidden sm:inline">Gallery</span>
+                    </Link>
+                    <Link
+                        to="/feed"
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                            isActive('/feed')
+                                ? 'bg-primary/15 text-primary'
+                                : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                        }`}
+                    >
+                        <Rss className="h-4 w-4" />
+                        <span className="hidden sm:inline">Feed</span>
                     </Link>
                     <Link
                         to="/upload"

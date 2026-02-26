@@ -1,38 +1,58 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix PDF 'Open' button navigation on Gallery page",
+  "title": "Add public all-PDFs feed page aggregating uploads from all accounts",
   "requirements": [
     {
-      "id": "REQ-18",
-      "summary": "Fix the 'Open' button on the public gallery page so that clicking it successfully navigates the user to the PDF viewer page at /view/<shareId>",
+      "id": "REQ-29",
+      "summary": "Create a new publicly accessible '/feed' page that displays all PDFs from all users in a single feed, showing title, uploader principal (truncated), upload date, and an 'Open' button navigating to /view/<shareId>, sorted newest-first",
       "acceptanceCriteria": [
-        "Clicking 'Open' on any PDF card in the gallery navigates the browser to /view/<shareId> for that PDF",
-        "The viewer page loads and renders the PDF content after clicking 'Open'",
-        "Navigation works for all gallery entries regardless of upload order",
-        "No JavaScript errors are thrown when clicking 'Open'"
+        "A new route '/feed' (or '/all') renders the all-PDFs page without requiring login.",
+        "All PDFs from all uploaders are listed, fetched via the existing listPdfs() query hook.",
+        "Each card displays: PDF title, uploader principal (truncated), upload date, and an 'Open' button.",
+        "Clicking 'Open' navigates to /view/<shareId> for the correct PDF.",
+        "Entries are sorted newest-first by upload timestamp.",
+        "The page is linked from the site header/navigation.",
+        "The page matches the existing dark navy and amber visual theme (card layout, shadows, hover transitions)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/GalleryPage.tsx",
-          "operation": "modify",
-          "description": "Fix the 'Open' button navigation by ensuring the shareId from the PDF metadata is correctly passed to the router navigation call. Verify that the button's onClick handler or Link component properly constructs the /view/<shareId> route using the shareId field from each PDF's Metadata object. Replace any broken href or navigate calls with a working TanStack Router Link component or useNavigate hook that references the correct route path."
+          "path": "frontend/src/pages/FeedPage.tsx",
+          "operation": "create",
+          "description": "Create FeedPage component that fetches all PDFs via useListPdfs() from useQueries.ts, displays them in a grid of cards matching the GalleryPage card design (dark navy background, amber accents, hover transitions). Each card shows PDF title, truncated uploader principal (first 8 and last 4 characters), formatted upload date, and an 'Open' button that navigates to /view/{shareId}. Sort entries by uploadedAt timestamp descending. Display loading state while fetching. The page is publicly accessible (no authentication required). Match the visual theme from index.css (bg-background, card styling with shadows and borders)."
         }
       ]
     },
     {
-      "id": "REQ-19",
-      "summary": "Verify that the ViewerPage correctly handles the shareId route parameter and that the chunked PDF retrieval flow completes successfully when navigated to from the gallery",
+      "id": "REQ-30",
+      "summary": "Add a 'Feed' navigation link in the site header that routes to the new all-PDFs feed page with active-route highlighting",
       "acceptanceCriteria": [
-        "The PDF viewer page successfully fetches and displays the PDF content when navigated to via the gallery 'Open' button",
-        "A loading progress indicator is shown while chunks are being fetched",
-        "An error message is shown if retrieval fails, rather than a blank or broken page"
+        "A 'Feed' link appears in the top navigation bar alongside existing links.",
+        "The link routes to the new feed page.",
+        "The link is highlighted/active when the user is on the feed page.",
+        "No other navigation links are changed or removed."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/ViewerPage.tsx",
+          "path": "frontend/src/components/Header.tsx",
           "operation": "modify",
-          "description": "Verify that the ViewerPage correctly extracts the shareId from the route params using TanStack Router's useParams hook and that the PDF fetch sequence (getPdfChunks → getPdfChunk loop → blob reassembly → iframe render) executes only after the actor is initialized. Add safeguards to prevent premature fetch attempts before the actor is ready. Ensure loading states are properly displayed during chunk retrieval and that error states are shown with user-friendly messages if the PDF cannot be loaded."
+          "description": "Add a new navigation link for 'Feed' in the navigation bar alongside the existing Gallery, Upload, and Dashboard links. The link should route to '/feed' and follow the same active-route highlighting pattern using the activeClass conditional styling (amber text color when active). Position it after the Gallery link and before Upload. Maintain the existing spacing and responsive layout of the nav links."
+        }
+      ]
+    },
+    {
+      "id": "REQ-31",
+      "summary": "Register the new '/feed' route in App.tsx to render FeedPage without authentication requirements",
+      "acceptanceCriteria": [
+        "Navigating directly to '/feed' renders the FeedPage without a 404 or redirect.",
+        "The route is public (no auth guard).",
+        "All existing routes (/, /upload, /dashboard, /view/:shareId) continue to work unchanged."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Register a new public route '/feed' in the TanStack Router configuration that renders the FeedPage component. Add the route alongside the existing public routes (Gallery, Viewer) without any authentication requirements. Import FeedPage from './pages/FeedPage'. Ensure the route does not conflict with existing routes and follows the same routing pattern as the GalleryPage route."
         }
       ]
     }

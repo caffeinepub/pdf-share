@@ -71,9 +71,12 @@ export interface _SERVICE {
   'getPdfChunks' : ActorMethod<[string], ChunkInfo>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'kickUser' : ActorMethod<[Principal], undefined>,
+  'listBannedUsers' : ActorMethod<[], Array<Principal>>,
   'listPdfs' : ActorMethod<[], Array<Metadata>>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'startUpload' : ActorMethod<[UploadParams], undefined>,
+  'unbanUser' : ActorMethod<[Principal], undefined>,
   'updatePdfTitle' : ActorMethod<[string, string], undefined>,
   'uploadChunk' : ActorMethod<[string, bigint, Chunk], undefined>,
 }

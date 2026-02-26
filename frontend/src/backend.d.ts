@@ -54,9 +54,12 @@ export interface backendInterface {
     getPdfChunks(shareId: string): Promise<ChunkInfo>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    kickUser(user: Principal): Promise<void>;
+    listBannedUsers(): Promise<Array<Principal>>;
     listPdfs(): Promise<Array<Metadata>>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     startUpload(uploadParams: UploadParams): Promise<void>;
+    unbanUser(user: Principal): Promise<void>;
     updatePdfTitle(shareId: string, newTitle: string): Promise<void>;
     uploadChunk(shareId: string, chunkIndex: bigint, chunkData: Chunk): Promise<void>;
 }

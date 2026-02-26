@@ -1,8 +1,8 @@
-import { RouterProvider, createRouter, createRoute, createRootRoute, Outlet } from '@tanstack/react-router';
+import { RouterProvider, createRouter, createRoute, createRootRoute, Outlet, redirect } from '@tanstack/react-router';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import { HomePage } from './pages/HomePage';
 import GalleryPage from './pages/GalleryPage';
+import FeedPage from './pages/FeedPage';
 import { UploadPage } from './pages/UploadPage';
 import { DashboardPage } from './pages/DashboardPage';
 import ViewerPage from './pages/ViewerPage';
@@ -24,17 +24,27 @@ const rootRoute = createRootRoute({
     component: Layout,
 });
 
-// Page routes
+// Gallery is now the home/main page
 const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: HomePage,
+    component: GalleryPage,
 });
 
+// Keep /gallery as an alias that redirects to /
 const galleryRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/gallery',
-    component: GalleryPage,
+    beforeLoad: () => {
+        throw redirect({ to: '/' });
+    },
+});
+
+// Public feed showing all PDFs from all accounts, newest-first
+const feedRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/feed',
+    component: FeedPage,
 });
 
 const uploadRoute = createRoute({
@@ -58,6 +68,7 @@ const viewerRoute = createRoute({
 const routeTree = rootRoute.addChildren([
     indexRoute,
     galleryRoute,
+    feedRoute,
     uploadRoute,
     dashboardRoute,
     viewerRoute,

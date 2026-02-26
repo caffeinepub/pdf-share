@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
-import { Upload, FileText, CheckCircle, Copy, ExternalLink, X, Loader2, AlertCircle, RefreshCw, LogIn } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Upload, FileText, CheckCircle, Copy, ExternalLink, X, Loader2, AlertCircle, RefreshCw, LogIn, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { useActor } from '@/hooks/useActor';
 import { useQueryClient } from '@tanstack/react-query';
 
 const CHUNK_SIZE = 500 * 1024; // 500 KB
+const RETRY_SHOW_DELAY_MS = 5000; // Show retry button after 5 seconds
 
 function generateShareId(): string {
     return crypto.randomUUID().replace(/-/g, '').slice(0, 16);
@@ -29,14 +30,63 @@ export function UploadPage() {
     const [isDragging, setIsDragging] = useState(false);
     const [copied, setCopied] = useState(false);
     const [uploadState, setUploadState] = useState<UploadState>({ phase: 'idle' });
+    const [showRetryButton, setShowRetryButton] = useState(false);
+    const [isRetrying, setIsRetrying] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const { identity, login, loginStatus } = useInternetIdentity();
-    const { isFetching: actorFetching } = useActor();
+    const { identity, login, loginStatus, isInitializing } = useInternetIdentity();
+    const { actor, isFetching: actorFetching } = useActor();
     const queryClient = useQueryClient();
 
     const isAuthenticated = !!identity;
     const isLoggingIn = loginStatus === 'logging-in';
+    // Actor is ready when it's non-null and not currently being fetched
+    const isActorReady = !!actor && !actorFetching;
+    // Still initializing: user is authenticated but actor hasn't loaded yet
+    const isActorInitializing = isAuthenticated && (actorFetching || !actor);
+
+    // Start a timer when actor is initializing; show retry button after delay
+    useEffect(() => {
+        if (isActorInitializing && !isActorReady) {
+            // Clear any existing timer
+            if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+            retryTimerRef.current = setTimeout(() => {
+                setShowRetryButton(true);
+            }, RETRY_SHOW_DELAY_MS);
+        } else {
+            // Actor is ready or not initializing — clear timer and hide retry button
+            if (retryTimerRef.current) {
+                clearTimeout(retryTimerRef.current);
+                retryTimerRef.current = null;
+            }
+            setShowRetryButton(false);
+            setIsRetrying(false);
+        }
+
+        return () => {
+            if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+        };
+    }, [isActorInitializing, isActorReady]);
+
+    const handleRetryConnection = async () => {
+        setIsRetrying(true);
+        setShowRetryButton(false);
+        // Invalidate the actor query to force a fresh initialization attempt
+        await queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey.includes('actor'),
+        });
+        await queryClient.refetchQueries({
+            predicate: (query) => query.queryKey.includes('actor'),
+        });
+        // If it still hasn't resolved after 5s, show the button again
+        retryTimerRef.current = setTimeout(() => {
+            if (!isActorReady) {
+                setShowRetryButton(true);
+                setIsRetrying(false);
+            }
+        }, RETRY_SHOW_DELAY_MS);
+    };
 
     const startUpload = useStartUpload();
     const uploadChunk = useUploadChunk();
@@ -87,8 +137,8 @@ export function UploadPage() {
             return;
         }
 
-        if (actorFetching) {
-            setUploadState({ phase: 'error', message: 'Authentication is still loading. Please wait a moment and try again.' });
+        if (!isActorReady) {
+            setUploadState({ phase: 'error', message: 'Connection is still initializing. Please wait a moment and try again.' });
             return;
         }
 
@@ -110,10 +160,13 @@ export function UploadPage() {
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             const isAuthError = msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('anonymous');
+            const isConnectionError = msg.toLowerCase().includes('connection not ready') || msg.toLowerCase().includes('actor not available');
             setUploadState({
                 phase: 'error',
                 message: isAuthError
-                    ? 'Authorization failed. Please log out and log in again, then retry.'
+                    ? 'Upload failed: You must be logged in to upload files. Please ensure you are logged in and try again.'
+                    : isConnectionError
+                    ? 'Connection is still initializing. Please wait a moment and try again.'
                     : `Failed to start upload: ${msg}`,
             });
             return;
@@ -151,9 +204,12 @@ export function UploadPage() {
             }
 
             if (!success) {
+                const isAuthError = lastError.toLowerCase().includes('unauthorized') || lastError.toLowerCase().includes('anonymous');
                 setUploadState({
                     phase: 'error',
-                    message: `Failed to upload chunk ${i + 1} of ${totalChunks}: ${lastError}`,
+                    message: isAuthError
+                        ? 'Upload failed: You must be logged in to upload files. Please ensure you are logged in and try again.'
+                        : `Failed to upload chunk ${i + 1} of ${totalChunks}: ${lastError}`,
                 });
                 return;
             }
@@ -171,7 +227,13 @@ export function UploadPage() {
             setUploadState({ phase: 'done', shareId: newShareId });
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
-            setUploadState({ phase: 'error', message: `Failed to finalize upload: ${msg}` });
+            const isAuthError = msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('anonymous');
+            setUploadState({
+                phase: 'error',
+                message: isAuthError
+                    ? 'Upload failed: You must be logged in to upload files. Please ensure you are logged in and try again.'
+                    : `Failed to finalize upload: ${msg}`,
+            });
         }
     };
 
@@ -272,6 +334,28 @@ export function UploadPage() {
         );
     }
 
+    // ── Identity still initializing (page load) ────────────────────────────────
+    if (isInitializing) {
+        return (
+            <main className="flex-1 py-12 sm:py-20">
+                <div className="container mx-auto px-4 sm:px-6 max-w-lg">
+                    <div className="mb-8">
+                        <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+                            Upload PDF
+                        </h1>
+                        <p className="text-muted-foreground">
+                            Upload a PDF document and get a shareable link instantly.
+                        </p>
+                    </div>
+                    <div className="card-glass p-8 text-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                        <p className="text-muted-foreground text-sm">Initializing…</p>
+                    </div>
+                </div>
+            </main>
+        );
+    }
+
     // ── Not authenticated — show login prompt ──────────────────────────────────
     if (!isAuthenticated) {
         return (
@@ -296,7 +380,7 @@ export function UploadPage() {
                             Login Required
                         </h2>
                         <p className="text-muted-foreground mb-6 text-sm">
-                            You need to be logged in to upload PDF files. Please log in to continue.
+                            Anyone with an account can upload PDF files. Please log in to get started.
                         </p>
                         <Button
                             onClick={handleLogin}
@@ -351,175 +435,186 @@ export function UploadPage() {
                 </div>
 
                 <div className="card-glass p-6 sm:p-8 space-y-6">
-                    {/* File drop zone */}
-                    <div>
-                        <Label className="text-sm font-medium text-foreground mb-2 block">
-                            PDF File
-                        </Label>
-                        <div
-                            onClick={() => !isUploading && fileInputRef.current?.click()}
-                            onDrop={isUploading ? undefined : handleDrop}
-                            onDragOver={isUploading ? undefined : handleDragOver}
-                            onDragLeave={isUploading ? undefined : handleDragLeave}
-                            className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 transition-all duration-200 ${
-                                isUploading
-                                    ? 'cursor-default opacity-60'
-                                    : 'cursor-pointer'
-                            } ${
-                                isDragging
-                                    ? 'border-primary bg-primary/10'
-                                    : selectedFile
-                                    ? 'border-primary/50 bg-primary/5'
-                                    : 'border-border hover:border-primary/40 hover:bg-secondary/40'
-                            }`}
-                        >
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".pdf,application/pdf"
-                                className="hidden"
-                                disabled={isUploading}
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleFileSelect(file);
-                                }}
-                            />
-                            {selectedFile ? (
-                                <>
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15">
-                                        <FileText className="h-6 w-6 text-primary" />
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="font-medium text-foreground text-sm">
-                                            {selectedFile.name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                                        </p>
-                                    </div>
-                                    {!isUploading && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedFile(null);
-                                            }}
-                                            className="absolute top-3 right-3 rounded-full p-1 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </button>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary">
-                                        <Upload className="h-6 w-6 text-muted-foreground" />
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="font-medium text-foreground text-sm">
-                                            Drop your PDF here
-                                        </p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                            or click to browse — PDF files only
-                                        </p>
-                                    </div>
-                                </>
+                    {/* Actor initializing banner with retry */}
+                    {isActorInitializing && !isUploading && (
+                        <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 flex items-start gap-3">
+                            <Wifi className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                                {isRetrying ? (
+                                    <p className="text-sm text-primary font-medium">
+                                        Reconnecting to the network…
+                                    </p>
+                                ) : (
+                                    <p className="text-sm text-primary font-medium">
+                                        Connecting to the network…
+                                    </p>
+                                )}
+                                {showRetryButton && !isRetrying && (
+                                    <button
+                                        onClick={handleRetryConnection}
+                                        className="mt-1 text-xs text-primary/80 underline underline-offset-2 hover:text-primary transition-colors"
+                                    >
+                                        Taking too long? Retry connection
+                                    </button>
+                                )}
+                            </div>
+                            {(isRetrying || !showRetryButton) && (
+                                <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0 mt-0.5" />
+                            )}
+                            {showRetryButton && !isRetrying && (
+                                <button
+                                    onClick={handleRetryConnection}
+                                    className="shrink-0 text-primary hover:text-primary/80 transition-colors"
+                                    title="Retry connection"
+                                >
+                                    <RefreshCw className="h-4 w-4" />
+                                </button>
                             )}
                         </div>
-                    </div>
+                    )}
 
-                    {/* Title input */}
+                    {/* Error banner */}
+                    {uploadState.phase === 'error' && (
+                        <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-3">
+                            <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm text-destructive font-medium">
+                                    {uploadState.message}
+                                </p>
+                                {selectedFile && title.trim() && (
+                                    <button
+                                        onClick={handleRetry}
+                                        className="mt-1 text-xs text-destructive/80 underline underline-offset-2 hover:text-destructive transition-colors"
+                                    >
+                                        Try again
+                                    </button>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setUploadState({ phase: 'idle' })}
+                                className="shrink-0 text-destructive/60 hover:text-destructive transition-colors"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Title field */}
                     <div className="space-y-2">
-                        <Label
-                            htmlFor="title"
-                            className="text-sm font-medium text-foreground"
-                        >
+                        <Label htmlFor="pdf-title" className="text-sm font-medium text-foreground">
                             Document Title
                         </Label>
                         <Input
-                            id="title"
-                            type="text"
-                            placeholder="Enter a title for your PDF"
+                            id="pdf-title"
+                            placeholder="Enter a title for your PDF…"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             disabled={isUploading}
-                            className="bg-secondary/50 border-border focus:border-primary/60 focus:ring-primary/30"
+                            className="bg-background/50 border-border focus:border-primary/50"
                         />
                     </div>
 
-                    {/* Upload progress */}
+                    {/* Drop zone */}
+                    <div
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onClick={() => !isUploading && fileInputRef.current?.click()}
+                        className={`
+                            relative rounded-xl border-2 border-dashed p-8 text-center transition-all cursor-pointer
+                            ${isDragging
+                                ? 'border-primary bg-primary/10 scale-[1.01]'
+                                : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                            }
+                            ${isUploading ? 'pointer-events-none opacity-60' : ''}
+                            ${selectedFile ? 'bg-primary/5 border-primary/30' : ''}
+                        `}
+                    >
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="application/pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleFileSelect(file);
+                            }}
+                        />
+
+                        {selectedFile ? (
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15">
+                                    <FileText className="h-6 w-6 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="font-medium text-foreground text-sm truncate max-w-[240px]">
+                                        {selectedFile.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                    </p>
+                                </div>
+                                {!isUploading && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedFile(null);
+                                        }}
+                                        className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                                    >
+                                        <X className="h-3 w-3" />
+                                        Remove
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
+                                    <Upload className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                                <div>
+                                    <p className="font-medium text-foreground text-sm">
+                                        Drop your PDF here
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        or click to browse files
+                                    </p>
+                                </div>
+                                <p className="text-xs text-muted-foreground/60">PDF files only</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Progress bar */}
                     {isUploading && (
                         <div className="space-y-2">
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>{progressLabel}</span>
-                                <span>{progressValue}%</span>
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs text-muted-foreground">{progressLabel}</p>
+                                <p className="text-xs text-muted-foreground font-mono">{progressValue}%</p>
                             </div>
                             <Progress value={progressValue} className="h-2" />
                         </div>
                     )}
 
-                    {/* Error */}
-                    {uploadState.phase === 'error' && (
-                        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                            <span>{uploadState.message}</span>
-                        </div>
-                    )}
-
-                    {/* Buttons */}
-                    <div className="flex gap-3">
-                        {uploadState.phase === 'error' ? (
+                    {/* Upload button */}
+                    <Button
+                        onClick={handleUpload}
+                        disabled={!selectedFile || !title.trim() || isUploading || !isActorReady}
+                        className="w-full gap-2 shadow-glow"
+                        size="lg"
+                    >
+                        {isUploading ? (
                             <>
-                                <Button
-                                    onClick={handleRetry}
-                                    disabled={!selectedFile || !title.trim() || !isAuthenticated || actorFetching}
-                                    className="flex-1 gap-2 font-semibold shadow-glow"
-                                    size="lg"
-                                >
-                                    <RefreshCw className="h-4 w-4" />
-                                    Retry Upload
-                                </Button>
-                                <Button
-                                    onClick={handleReset}
-                                    variant="outline"
-                                    size="lg"
-                                    className="border-border hover:bg-secondary"
-                                >
-                                    Reset
-                                </Button>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                {uploadState.phase === 'finalizing' ? 'Saving…' : 'Uploading…'}
                             </>
                         ) : (
-                            <Button
-                                onClick={handleUpload}
-                                disabled={
-                                    !selectedFile ||
-                                    !title.trim() ||
-                                    isUploading ||
-                                    !isAuthenticated ||
-                                    actorFetching
-                                }
-                                className="flex-1 gap-2 font-semibold shadow-glow"
-                                size="lg"
-                            >
-                                {isUploading ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Uploading…
-                                    </>
-                                ) : actorFetching ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Preparing…
-                                    </>
-                                ) : (
-                                    <>
-                                        <Upload className="h-4 w-4" />
-                                        Upload PDF
-                                    </>
-                                )}
-                            </Button>
+                            <>
+                                <Upload className="h-4 w-4" />
+                                Upload PDF
+                            </>
                         )}
-                    </div>
+                    </Button>
                 </div>
             </div>
         </main>

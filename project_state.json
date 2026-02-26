@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 15,
-  "summary": "A website for sharing PDFs with viewers. Users can upload PDFs and share them with others who can view them online.",
+  "projectStateVersion": 27,
+  "summary": "A website for sharing PDFs with viewers. Users can upload PDFs and share them with others who can view them online. Admin controls (kick/ban users) are being added for the site owner.",
   "architectural_notes": [
     "PDF upload size workaround: split large PDFs into parts under 2MB and upload separately; IC ingress message limit is ~2MB"
   ],
@@ -9,9 +9,12 @@
     "Chunked upload feature build has failed multiple times; large PDFs (>2MB) cannot be uploaded in a single message on IC",
     "PDF uploads failing even for small files (0.39 MB) — root cause unknown; full PDF integration redo requested",
     "Upload fails with 'Unauthorized: Only users can start uploads' — backend auth check is rejecting the upload caller",
-    "PDFs don't open when clicking 'Open' on the public gallery page (Version 6)"
+    "PDFs don't open when clicking 'Open' on the public gallery page (Version 6)",
+    "Upload fails with 'Failed to start upload: Actor not available' — actor not initialized before upload attempt (Version 7)",
+    "Upload page 'Initializing connection…' message can hang indefinitely (reported hanging for 10+ minutes) — actor initialization does not timeout or retry automatically",
+    "Upload fails with 'Authorization failed. Please log out and log in again, then retry.' — backend is still rejecting authenticated users; access control too restrictive (Version 10)"
   ],
-  "isFixRequest": true,
+  "isFixRequest": false,
   "existing_features": [
     {
       "id": "feature-build-a-pdf-upload-page-for-the-site-owner-admin-include-a-file-picker-restricted-to-pdf-files-a-title-input-field-and-an-upload-button-on-successful-upload-display-the-generated-shareable-link-for-that-pdf",
@@ -124,6 +127,86 @@
         "REQ-19"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-in-uploadpage-tsx-guard-the-upload-flow-so-it-does-not-attempt-to-call-startupload-until-the-actor-is-confirmed-to-be-initialized-and-non-null-before-invoking-any-upload-step-check-that-the-actor-reference-returned-from-useactor-or-the-equivalent-hook-is-available-if-it-is-not-yet-ready-show-a-loading-waiting-state-rather-than-immediately-throwing-actor-not-available-only-proceed-with-the-chunked-upload-sequence-once-the-actor-is-definitively-available",
+      "title": "In UploadPage.tsx, guard the upload flow so it does not attempt to call startUpload until the actor is confirmed to be initialized and non-null. Before invoking any upload step, check that the actor reference returned from useActor (or the equivalent hook) is available; if it is not yet ready, show a loading/waiting state rather than immediately throwing 'Actor not available'. Only proceed with the chunked upload sequence once the actor is definitively available.",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-usequeries-ts-and-or-useactor-ts-integration-ensure-the-actor-used-for-upload-mutations-is-always-sourced-reactively-from-the-query-cache-or-hook-state-so-that-if-the-actor-initializes-after-the-component-mounts-e-g-because-the-internet-identity-identity-loads-asynchronously-the-upload-mutation-automatically-picks-up-the-latest-actor-instance-rather-than-capturing-a-stale-null-reference-at-component-mount-time",
+      "title": "In useQueries.ts (and/or useActor.ts integration), ensure the actor used for upload mutations is always sourced reactively from the query cache or hook state so that if the actor initializes after the component mounts (e.g., because the Internet Identity identity loads asynchronously), the upload mutation automatically picks up the latest actor instance rather than capturing a stale null reference at component mount time.",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-public-gallery-page-gallerypage-tsx-so-that-it-is-the-default-home-route-and-automatically-reflects-any-newly-uploaded-pdf-immediately-after-upload-ensuring-the-list-query-is-invalidated-refetched-after-a-successful-upload-so-the-new-entry-appears-without-requiring-a-manual-page-refresh",
+      "title": "Update the public gallery page (GalleryPage.tsx) so that it is the default home route ('/') and automatically reflects any newly uploaded PDF immediately after upload — ensuring the list query is invalidated/refetched after a successful upload so the new entry appears without requiring a manual page refresh.",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-actor-initialization-logic-in-uploadpage-tsx-so-that-when-initialization-is-pending-or-fails-the-app-retries-the-connection-targeting-only-active-available-ic-nodes-rather-than-retrying-blindly-against-all-nodes-after-5-seconds-of-waiting-display-a-visible-retry-connection-button-that-the-user-can-click-to-manually-trigger-a-fresh-initialization-attempt-each-retry-should-attempt-to-re-create-the-actor-using-the-existing-useactor-hook-mechanism-clear-the-error-waiting-state-and-resume-normal-initialization-flow-once-the-actor-is-successfully-created",
+      "title": "Update the actor initialization logic in UploadPage.tsx so that when initialization is pending or fails, the app retries the connection targeting only active/available IC nodes rather than retrying blindly against all nodes. After 5 seconds of waiting, display a visible 'Retry connection' button that the user can click to manually trigger a fresh initialization attempt. Each retry should attempt to re-create the actor using the existing useActor hook mechanism. Clear the error/waiting state and resume normal initialization flow once the actor is successfully created.",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-uploadpage-tsx-update-the-error-messaging-so-that-when-an-authorization-error-is-returned-from-the-backend-it-clearly-informs-the-user-that-upload-is-open-to-all-logged-in-users-and-prompts-them-to-ensure-they-are-logged-in-rather-than-displaying-confusing-log-out-and-log-in-again-instructions",
+      "title": "In UploadPage.tsx, update the error messaging so that when an authorization error is returned from the backend, it clearly informs the user that upload is open to all logged-in users and prompts them to ensure they are logged in, rather than displaying confusing 'log out and log in again' instructions.",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-admin-users-panel-to-the-dashboard-page-dashboardpage-tsx-visible-only-when-the-authenticated-user-is-the-admin-that-lists-all-principals-who-have-uploaded-pdfs-derived-from-uploaded-pdf-metadata-with-a-kick-button-next-to-each-uploader-clicking-kick-calls-the-backend-kickuser-function-for-that-principal-and-shows-a-confirmation-before-executing-also-display-a-banned-users-section-listing-currently-banned-principals-each-with-an-unban-button-that-calls-unbanuser-show-loading-and-error-states-for-all-kick-unban-actions",
+      "title": "Add an Admin Users panel to the Dashboard page (DashboardPage.tsx) — visible only when the authenticated user is the admin — that lists all principals who have uploaded PDFs (derived from uploaded PDF metadata), with a 'Kick' button next to each uploader. Clicking 'Kick' calls the backend `kickUser` function for that principal and shows a confirmation before executing. Also display a 'Banned Users' section listing currently banned principals, each with an 'Unban' button that calls `unbanUser`. Show loading and error states for all kick/unban actions.",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-react-query-mutation-hooks-in-usequeries-ts-for-kickuser-principal-unbanuser-principal-and-a-query-hook-for-listbannedusers-these-hooks-must-use-the-authenticated-actor-instance-same-pattern-as-existing-mutation-hooks-and-invalidate-the-banned-users-query-after-a-successful-kick-or-unban",
+      "title": "Add React Query mutation hooks in `useQueries.ts` for `kickUser(principal)`, `unbanUser(principal)`, and a query hook for `listBannedUsers()`. These hooks must use the authenticated actor instance (same pattern as existing mutation hooks) and invalidate the banned users query after a successful kick or unban.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-new-page-at-feed-or-all-that-displays-all-pdfs-uploaded-by-all-users-accounts-in-a-single-publicly-accessible-feed-each-entry-should-show-the-pdf-title-uploader-s-principal-truncated-for-readability-upload-date-and-an-open-button-that-navigates-to-the-existing-viewer-at-view-shareid-the-page-must-be-accessible-without-authentication-using-the-existing-anonymous-compatible-listpdfs-backend-call-sort-entries-by-upload-timestamp-descending-newest-first",
+      "title": "Create a new page at '/feed' (or '/all') that displays all PDFs uploaded by all users/accounts in a single, publicly accessible feed. Each entry should show the PDF title, uploader's principal (truncated for readability), upload date, and an 'Open' button that navigates to the existing viewer at /view/<shareId>. The page must be accessible without authentication, using the existing anonymous-compatible listPdfs() backend call. Sort entries by upload timestamp descending (newest first).",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-feed-navigation-link-in-the-site-header-header-tsx-that-routes-to-the-new-all-pdfs-feed-page-the-link-should-follow-the-same-active-route-highlighting-pattern-used-by-the-existing-gallery-upload-and-dashboard-nav-links",
+      "title": "Add a 'Feed' navigation link in the site header (Header.tsx) that routes to the new all-PDFs feed page. The link should follow the same active-route highlighting pattern used by the existing Gallery, Upload, and Dashboard nav links.",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-register-the-new-feed-page-route-in-app-tsx-tanstack-router-so-that-navigating-to-feed-renders-the-new-feedpage-component-ensure-the-route-does-not-require-authentication-and-does-not-conflict-with-existing-routes",
+      "title": "Register the new feed page route in App.tsx (TanStack Router) so that navigating to '/feed' renders the new FeedPage component. Ensure the route does not require authentication and does not conflict with existing routes.",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -207,6 +290,46 @@
       "reqIds": [
         "REQ-17"
       ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Improve actor initialization on the upload page: add a retry mechanism that attempts to reconnect only to active/available IC nodes, with a visible 'Retry connection' button that appears after a few seconds if initialization is still pending.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Allow any authenticated Internet Identity user (not just a specific admin) to upload PDFs. Remove or relax the access control check in the backend so that any logged-in user can call startUpload, uploadChunk, and finalizeUpload.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "In the backend (main.mo), update the access control checks for startUpload, uploadChunk, and finalizeUpload so that any non-anonymous authenticated Internet Identity principal is permitted to call them. Remove any check that compares the caller against a hardcoded admin principal or a specific allowed list. The only restriction should be that the caller is not the anonymous principal.",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "Add admin commands to kick/remove users from the platform (admin-only controls for the site owner)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-18",
+      "summary": "Add a backend `kickUser(principal: Principal): async Result` function to the main actor that allows the designated admin (the canister owner/controller) to ban a user principal from uploading. Store banned principals in a stable data structure. When a banned principal calls `startUpload`, `uploadChunk`, or `finalizeUpload`, reject them with a clear 'You have been banned from uploading' error. Also add `listBannedUsers(): async [Principal]` and `unbanUser(principal: Principal): async Result` functions, both restricted to the admin caller only.",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-19",
+      "summary": "Create a page that aggregates and displays all PDFs uploaded by all users/accounts in one place",
+      "reqIds": [],
       "status": "pending"
     }
   ],
