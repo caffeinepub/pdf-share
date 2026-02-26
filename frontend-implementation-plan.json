@@ -1,58 +1,31 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Redo PDF Upload Integration - Frontend Changes",
+  "title": "Fix unauthorized error on chunked upload start",
   "requirements": [
     {
-      "id": "REQ-11",
-      "summary": "Rewrite the frontend PDF upload flow to use chunked upload with progress tracking and retry logic",
+      "id": "REQ-15",
+      "summary": "Verify that the frontend actor is constructed with the authenticated identity (not anonymous) when the user is logged in via Internet Identity before calling startUpload.",
       "acceptanceCriteria": [
-        "Uploading a 0.39 MB PDF completes successfully and shows the shareable link",
-        "Uploading a PDF larger than 2 MB completes successfully via chunked upload",
-        "A progress bar is visible during upload showing chunk progress",
-        "A descriptive error message is displayed if upload fails at any step",
-        "The user can retry a failed upload without refreshing the page"
+        "After login via Internet Identity, the actor used for upload calls carries the authenticated principal.",
+        "The startUpload call is made with the authenticated actor, not an anonymous one.",
+        "No Unauthorized error appears in the browser console during a PDF upload attempt by a logged-in user."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/UploadPage.tsx",
+          "path": "frontend/src/hooks/useActor.ts",
           "operation": "modify",
-          "description": "Replace the current single-call upload logic with chunked upload flow. On file selection, split the PDF ArrayBuffer into 500 KB chunks, call startUpload with title, shareId, fileName, and totalChunks, then sequentially call uploadChunk for each chunk with up to 3 retries per chunk on failure. After all chunks succeed, create an ExternalBlob from the file bytes and call finalizeUpload(shareId, blob). Update the progress tracking to show 'X of Y chunks uploaded' instead of generic upload progress. Add specific error handling that displays the failure reason (e.g., 'Failed to upload chunk 3 of 7') and provides a retry button that restarts the upload without page refresh. Use the blob-storage component's ExternalBlob.fromBytes() and withUploadProgress() for the finalize step. Verify the blob-storage component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-12",
-      "summary": "Rewrite the frontend PDF retrieval and rendering flow to use chunked retrieval with progress tracking",
-      "acceptanceCriteria": [
-        "A previously uploaded PDF renders correctly in the iframe on the viewer page",
-        "A loading indicator is shown while chunks are being assembled",
-        "An error message is displayed if the PDF cannot be retrieved",
-        "The PDF title is displayed at the top of the page",
-        "The 'Next PDF' navigation button continues to function correctly"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/ViewerPage.tsx",
-          "operation": "modify",
-          "description": "Replace the current single-call PDF fetch with chunked retrieval flow. First call getPdfChunks(shareId) to get the chunk count, then sequentially fetch each chunk via getPdfChunk(shareId, chunkIndex) for indices 0 to chunkCount-1. Reassemble all chunks into a single Uint8Array, create a Blob with type 'application/pdf', generate an object URL using URL.createObjectURL(), and set it as the iframe src. Add a loading progress indicator showing 'Fetching chunk X of Y' while chunks are being downloaded. Display clear error messages if retrieval fails (e.g., 'Failed to fetch chunk 2 of 5'). Ensure the PDF title from metadata continues to display at the top and the 'Next PDF' navigation button remains functional."
-        }
-      ]
-    },
-    {
-      "id": "REQ-13",
-      "summary": "Update React Query hooks to expose chunked upload and retrieval functions",
-      "acceptanceCriteria": [
-        "useQueries.ts exposes hooks for chunked upload (startUpload, uploadChunk, finalizeUpload)",
-        "useQueries.ts exposes hooks for chunked retrieval (getPdfChunks, getPdfChunk)",
-        "Dashboard list, delete, and rename operations continue to function correctly",
-        "No references to the old single-call upload/fetch API remain in the hooks file"
-      ],
-      "file_operations": [
+          "description": "Review the actor creation logic to ensure that when an authenticated identity is available from the InternetIdentity context, the actor is constructed with that identity rather than anonymously. Verify that the actor invalidation and recreation occurs properly when the user logs in, so that subsequent backend calls (including startUpload) use the authenticated principal. If the actor is cached or created before authentication completes, ensure it is rebuilt after login."
+        },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Remove the old single-call upload hook (if present) and add three new mutation hooks: useStartUpload (calls actor.startUpload with UploadParams), useUploadChunk (calls actor.uploadChunk with shareId, chunkIndex, chunkData), and useFinalizeUpload (calls actor.finalizeUpload with shareId and ExternalBlob). Add two new query hooks: useGetPdfChunks (calls actor.getPdfChunks returning ChunkInfo) and useGetPdfChunk (calls actor.getPdfChunk returning a single Chunk). Ensure the existing dashboard hooks (useGetAllPdfMeta for list, useDeletePdf for delete, useUpdatePdfTitle for rename) continue to work without modification. Remove any old fetch/upload hooks that called actor.uploadPdf or similar single-call methods."
+          "description": "Review the useStartUpload hook and other upload-related query hooks (useUploadChunk, useFinalizeUpload) to confirm they are using the actor from useActor and that the actor is not being overridden or replaced with an anonymous actor. Ensure that these hooks correctly depend on the authenticated actor so that startUpload, uploadChunk, and finalizeUpload are called with the authenticated identity. Add error handling to display a user-friendly message if an 'Unauthorized' error occurs."
+        },
+        {
+          "path": "frontend/src/pages/UploadPage.tsx",
+          "operation": "modify",
+          "description": "Ensure that the UploadPage checks for user authentication before allowing a file upload. If the user is not authenticated, display a prompt or redirect to login. Verify that the upload flow (startUpload, uploadChunk, finalizeUpload) is initiated only after the authenticated actor is available. Add visual feedback or error messages if an authorization error occurs during the upload process."
         }
       ]
     }

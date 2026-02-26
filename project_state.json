@@ -1,13 +1,14 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 9,
+  "projectStateVersion": 11,
   "summary": "A website for sharing PDFs with viewers. Users can upload PDFs and share them with others who can view them online.",
   "architectural_notes": [
     "PDF upload size workaround: split large PDFs into parts under 2MB and upload separately; IC ingress message limit is ~2MB"
   ],
   "known_issues": [
     "Chunked upload feature build has failed multiple times; large PDFs (>2MB) cannot be uploaded in a single message on IC",
-    "PDF uploads failing even for small files (0.39 MB) — root cause unknown; full PDF integration redo requested"
+    "PDF uploads failing even for small files (0.39 MB) — root cause unknown; full PDF integration redo requested",
+    "Upload fails with 'Unauthorized: Only users can start uploads' — backend auth check is rejecting the upload caller"
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -90,6 +91,14 @@
         "REQ-13"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-verify-that-the-frontend-actor-in-useactor-ts-usequeries-ts-is-constructed-with-the-authenticated-identity-not-anonymous-when-the-user-is-logged-in-via-internet-identity-before-calling-startupload-if-the-actor-is-being-created-anonymously-even-when-the-user-is-authenticated-ensure-it-is-rebuilt-with-the-correct-identity-so-the-backend-receives-a-non-anonymous-principal",
+      "title": "Verify that the frontend actor in `useActor.ts` / `useQueries.ts` is constructed with the authenticated identity (not anonymous) when the user is logged in via Internet Identity before calling `startUpload`. If the actor is being created anonymously even when the user is authenticated, ensure it is rebuilt with the correct identity so the backend receives a non-anonymous principal.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -150,6 +159,14 @@
       "summary": "Rewrite the backend PDF storage and upload logic in main.mo to use a reliable chunked upload approach: split incoming PDF binary data into small chunks (e.g., 500 KB each), store chunks separately in stable memory, and reassemble on retrieval. Expose backend functions: startUpload(title, shareId, totalChunks), uploadChunk(shareId, chunkIndex, chunkData), finalizeUpload(shareId), getPdfChunks(shareId) returning chunk count and metadata, getPdfChunk(shareId, chunkIndex) returning a single chunk blob, listPdfs(), deletePdf(shareId), and renamePdf(shareId, newTitle). Ensure all existing metadata fields (title, shareId, uploadTimestamp) are preserved.",
       "reqIds": [
         "REQ-10"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Fix the backend `startUpload` function so that it correctly identifies authenticated callers. The current access control check is rejecting legitimate upload requests with 'Unauthorized: Only users can start uploads'. Inspect the caller identity check in the `startUpload` handler — ensure it accepts any non-anonymous principal (i.e., a real Internet Identity user) rather than applying an overly restrictive check such as comparing against a hardcoded admin principal or using a broken identity comparison. The fix must allow authenticated Internet Identity users to call `startUpload`, `uploadChunk`, and `finalizeUpload` successfully.",
+      "reqIds": [
+        "REQ-14"
       ],
       "status": "pending"
     }

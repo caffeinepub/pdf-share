@@ -1,11 +1,14 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, FileText, CheckCircle, Copy, ExternalLink, X, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Upload, FileText, CheckCircle, Copy, ExternalLink, X, Loader2, AlertCircle, RefreshCw, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { useStartUpload, useUploadChunk, useFinalizeUpload } from '@/hooks/useQueries';
 import { Link } from '@tanstack/react-router';
+import { useInternetIdentity } from '@/hooks/useInternetIdentity';
+import { useActor } from '@/hooks/useActor';
+import { useQueryClient } from '@tanstack/react-query';
 
 const CHUNK_SIZE = 500 * 1024; // 500 KB
 
@@ -28,9 +31,27 @@ export function UploadPage() {
     const [uploadState, setUploadState] = useState<UploadState>({ phase: 'idle' });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const { identity, login, loginStatus } = useInternetIdentity();
+    const { isFetching: actorFetching } = useActor();
+    const queryClient = useQueryClient();
+
+    const isAuthenticated = !!identity;
+    const isLoggingIn = loginStatus === 'logging-in';
+
     const startUpload = useStartUpload();
     const uploadChunk = useUploadChunk();
     const finalizeUpload = useFinalizeUpload();
+
+    const handleLogin = async () => {
+        try {
+            await login();
+        } catch (error: unknown) {
+            const err = error as Error;
+            if (err?.message === 'User is already authenticated') {
+                // Already authenticated, ignore
+            }
+        }
+    };
 
     const handleFileSelect = (file: File) => {
         if (file.type !== 'application/pdf') {
@@ -61,6 +82,16 @@ export function UploadPage() {
     const handleDragLeave = () => setIsDragging(false);
 
     const runUpload = async (file: File, titleText: string) => {
+        if (!isAuthenticated) {
+            setUploadState({ phase: 'error', message: 'You must be logged in to upload files.' });
+            return;
+        }
+
+        if (actorFetching) {
+            setUploadState({ phase: 'error', message: 'Authentication is still loading. Please wait a moment and try again.' });
+            return;
+        }
+
         const arrayBuffer = await file.arrayBuffer();
         const fileBytes = new Uint8Array(arrayBuffer) as Uint8Array<ArrayBuffer>;
 
@@ -78,7 +109,13 @@ export function UploadPage() {
             });
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
-            setUploadState({ phase: 'error', message: `Failed to start upload: ${msg}` });
+            const isAuthError = msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('anonymous');
+            setUploadState({
+                phase: 'error',
+                message: isAuthError
+                    ? 'Authorization failed. Please log out and log in again, then retry.'
+                    : `Failed to start upload: ${msg}`,
+            });
             return;
         }
 
@@ -235,6 +272,56 @@ export function UploadPage() {
         );
     }
 
+    // ── Not authenticated — show login prompt ──────────────────────────────────
+    if (!isAuthenticated) {
+        return (
+            <main className="flex-1 py-12 sm:py-20">
+                <div className="container mx-auto px-4 sm:px-6 max-w-lg">
+                    <div className="mb-8">
+                        <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+                            Upload PDF
+                        </h1>
+                        <p className="text-muted-foreground">
+                            Upload a PDF document and get a shareable link instantly.
+                        </p>
+                    </div>
+
+                    <div className="card-glass p-8 text-center">
+                        <div className="flex justify-center mb-4">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/15">
+                                <LogIn className="h-8 w-8 text-primary" />
+                            </div>
+                        </div>
+                        <h2 className="font-display text-xl font-bold text-foreground mb-2">
+                            Login Required
+                        </h2>
+                        <p className="text-muted-foreground mb-6 text-sm">
+                            You need to be logged in to upload PDF files. Please log in to continue.
+                        </p>
+                        <Button
+                            onClick={handleLogin}
+                            disabled={isLoggingIn}
+                            className="gap-2 shadow-glow px-8"
+                            size="lg"
+                        >
+                            {isLoggingIn ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Logging in…
+                                </>
+                            ) : (
+                                <>
+                                    <LogIn className="h-4 w-4" />
+                                    Log In
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </div>
+            </main>
+        );
+    }
+
     // ── Upload progress label ──────────────────────────────────────────────────
     let progressLabel = '';
     let progressValue = 0;
@@ -385,7 +472,7 @@ export function UploadPage() {
                             <>
                                 <Button
                                     onClick={handleRetry}
-                                    disabled={!selectedFile || !title.trim()}
+                                    disabled={!selectedFile || !title.trim() || !isAuthenticated || actorFetching}
                                     className="flex-1 gap-2 font-semibold shadow-glow"
                                     size="lg"
                                 >
@@ -404,14 +491,25 @@ export function UploadPage() {
                         ) : (
                             <Button
                                 onClick={handleUpload}
-                                disabled={!selectedFile || !title.trim() || isUploading}
-                                className="w-full gap-2 font-semibold shadow-glow"
+                                disabled={
+                                    !selectedFile ||
+                                    !title.trim() ||
+                                    isUploading ||
+                                    !isAuthenticated ||
+                                    actorFetching
+                                }
+                                className="flex-1 gap-2 font-semibold shadow-glow"
                                 size="lg"
                             >
                                 {isUploading ? (
                                     <>
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                         Uploading…
+                                    </>
+                                ) : actorFetching ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Preparing…
                                     </>
                                 ) : (
                                     <>

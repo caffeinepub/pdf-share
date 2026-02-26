@@ -1,11 +1,36 @@
 import { Link, useRouterState } from '@tanstack/react-router';
-import { FileText, LayoutDashboard, Upload } from 'lucide-react';
+import { FileText, LayoutDashboard, Upload, LogIn, LogOut, Loader2 } from 'lucide-react';
+import { useInternetIdentity } from '@/hooks/useInternetIdentity';
+import { useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
 
 export function Header() {
     const routerState = useRouterState();
     const pathname = routerState.location.pathname;
+    const { identity, login, clear, loginStatus } = useInternetIdentity();
+    const queryClient = useQueryClient();
+
+    const isAuthenticated = !!identity;
+    const isLoggingIn = loginStatus === 'logging-in';
 
     const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
+
+    const handleAuth = async () => {
+        if (isAuthenticated) {
+            await clear();
+            queryClient.clear();
+        } else {
+            try {
+                await login();
+            } catch (error: unknown) {
+                const err = error as Error;
+                if (err?.message === 'User is already authenticated') {
+                    await clear();
+                    setTimeout(() => login(), 300);
+                }
+            }
+        }
+    };
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border bg-card/80 backdrop-blur-md">
@@ -32,7 +57,7 @@ export function Header() {
                     </span>
                 </Link>
 
-                {/* Navigation */}
+                {/* Navigation + Auth */}
                 <nav className="flex items-center gap-1 sm:gap-2">
                     <Link
                         to="/upload"
@@ -56,6 +81,32 @@ export function Header() {
                         <LayoutDashboard className="h-4 w-4" />
                         <span className="hidden sm:inline">Dashboard</span>
                     </Link>
+
+                    {/* Auth button */}
+                    <Button
+                        onClick={handleAuth}
+                        disabled={isLoggingIn}
+                        variant={isAuthenticated ? 'outline' : 'default'}
+                        size="sm"
+                        className={`ml-1 gap-1.5 ${isAuthenticated ? 'border-border hover:bg-secondary' : 'shadow-glow'}`}
+                    >
+                        {isLoggingIn ? (
+                            <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                <span className="hidden sm:inline">Logging in…</span>
+                            </>
+                        ) : isAuthenticated ? (
+                            <>
+                                <LogOut className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">Log Out</span>
+                            </>
+                        ) : (
+                            <>
+                                <LogIn className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">Log In</span>
+                            </>
+                        )}
+                    </Button>
                 </nav>
             </div>
         </header>

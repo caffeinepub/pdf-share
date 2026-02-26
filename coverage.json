@@ -1,71 +1,45 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T00:59:31.269Z",
+  "generatedAt": "2026-02-26T01:08:09.515Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
-    "implemented": 3,
+    "total": 2,
+    "implemented": 1,
     "items": [
       {
-        "id": "REQ-10",
-        "summary": "Rewrite the backend PDF storage and upload logic in main.mo to use a reliable chunked upload approach: split incoming PDF binary data into small chunks (e.g., 500 KB each), store chunks separately in stable memory, and reassemble on retrieval. Expose backend functions: startUpload(title, shareId, totalChunks), uploadChunk(shareId, chunkIndex, chunkData), finalizeUpload(shareId), getPdfChunks(shareId) returning chunk count and metadata, getPdfChunk(shareId, chunkIndex) returning a single chunk blob, listPdfs(), deletePdf(shareId), and renamePdf(shareId, newTitle). Ensure all existing metadata fields (title, shareId, uploadTimestamp) are preserved.",
+        "id": "REQ-14",
+        "summary": "Fix the backend `startUpload` function so that it correctly identifies authenticated callers. The current access control check is rejecting legitimate upload requests with 'Unauthorized: Only users can start uploads'. Inspect the caller identity check in the `startUpload` handler — ensure it accepts any non-anonymous principal (i.e., a real Internet Identity user) rather than applying an overly restrictive check such as comparing against a hardcoded admin principal or using a broken identity comparison. The fix must allow authenticated Internet Identity users to call `startUpload`, `uploadChunk`, and `finalizeUpload` successfully.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-11",
-        "summary": "Rewrite the frontend PDF upload flow in UploadPage.tsx to use the new chunked upload backend API. On file selection, split the PDF ArrayBuffer into chunks of 500 KB, call startUpload to initialize, then sequentially call uploadChunk for each chunk with retry logic (up to 3 retries per chunk on failure), then call finalizeUpload. Display a progress bar showing chunk upload progress (e.g., '3 of 7 chunks uploaded'). Show a clear error message with the specific failure reason if any step fails, and allow the user to retry the upload.",
+        "id": "REQ-15",
+        "summary": "Verify that the frontend actor in `useActor.ts` / `useQueries.ts` is constructed with the authenticated identity (not anonymous) when the user is logged in via Internet Identity before calling `startUpload`. If the actor is being created anonymously even when the user is authenticated, ensure it is rebuilt with the correct identity so the backend receives a non-anonymous principal.",
         "status": "implemented",
         "plannedFiles": [
+          "frontend/src/hooks/useActor.ts",
+          "frontend/src/hooks/useQueries.ts",
           "frontend/src/pages/UploadPage.tsx"
         ],
         "matchedFiles": [
           "frontend/src/pages/UploadPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-12",
-        "summary": "Rewrite the frontend PDF retrieval and rendering flow in ViewerPage.tsx to use the new chunked retrieval backend API. Fetch the chunk count via getPdfChunks(shareId), then sequentially fetch each chunk via getPdfChunk(shareId, chunkIndex), reassemble all chunks into a single Blob, create an object URL, and render the PDF in an iframe. Show a loading progress indicator while chunks are being fetched. Display a clear error message if retrieval fails.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/ViewerPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/ViewerPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-13",
-        "summary": "Update the React Query hooks in useQueries.ts to expose the new chunked upload and chunked retrieval functions, replacing the old single-call upload and fetch hooks. Ensure the dashboard list, delete, and rename hooks continue to work with the updated backend API signatures.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/components/Header.tsx",
     "frontend/src/pages/UploadPage.tsx",
-    "frontend/src/pages/ViewerPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

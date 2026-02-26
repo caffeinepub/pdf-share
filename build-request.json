@@ -1,100 +1,57 @@
 {
   "kind": "build_request",
-  "title": "Redo PDF Upload Integration",
+  "title": "Fix unauthorized error on chunked upload start",
   "projectName": "PDF Share",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-10",
-      "text": "Rewrite the backend PDF storage and upload logic in main.mo to use a reliable chunked upload approach: split incoming PDF binary data into small chunks (e.g., 500 KB each), store chunks separately in stable memory, and reassemble on retrieval. Expose backend functions: startUpload(title, shareId, totalChunks), uploadChunk(shareId, chunkIndex, chunkData), finalizeUpload(shareId), getPdfChunks(shareId) returning chunk count and metadata, getPdfChunk(shareId, chunkIndex) returning a single chunk blob, listPdfs(), deletePdf(shareId), and renamePdf(shareId, newTitle). Ensure all existing metadata fields (title, shareId, uploadTimestamp) are preserved.",
+      "id": "REQ-14",
+      "text": "Fix the backend `startUpload` function so that it correctly identifies authenticated callers. The current access control check is rejecting legitimate upload requests with 'Unauthorized: Only users can start uploads'. Inspect the caller identity check in the `startUpload` handler — ensure it accepts any non-anonymous principal (i.e., a real Internet Identity user) rather than applying an overly restrictive check such as comparing against a hardcoded admin principal or using a broken identity comparison. The fix must allow authenticated Internet Identity users to call `startUpload`, `uploadChunk`, and `finalizeUpload` successfully.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-latest"
+          "msg-1"
         ],
         "quotes": [
-          "What if you just redid the pdf Integration"
+          "Failed to start upload: Unauthorized: Only users can start uploads"
         ]
       },
       "acceptanceCriteria": [
-        "A 0.39 MB PDF can be uploaded successfully without error",
-        "PDFs larger than 2 MB can be uploaded via chunking without failure",
-        "Uploaded PDFs can be retrieved in full by shareId",
-        "listPdfs() returns correct metadata for all stored PDFs",
-        "deletePdf() and renamePdf() continue to work correctly"
+        "An authenticated Internet Identity user can call startUpload without receiving an Unauthorized error.",
+        "An anonymous (unauthenticated) caller is still rejected with an appropriate error.",
+        "uploadChunk and finalizeUpload succeed for an authenticated caller after a successful startUpload.",
+        "A 0.39 MB PDF can be uploaded end-to-end without authorization errors."
       ]
     },
     {
-      "id": "REQ-11",
-      "text": "Rewrite the frontend PDF upload flow in UploadPage.tsx to use the new chunked upload backend API. On file selection, split the PDF ArrayBuffer into chunks of 500 KB, call startUpload to initialize, then sequentially call uploadChunk for each chunk with retry logic (up to 3 retries per chunk on failure), then call finalizeUpload. Display a progress bar showing chunk upload progress (e.g., '3 of 7 chunks uploaded'). Show a clear error message with the specific failure reason if any step fails, and allow the user to retry the upload.",
+      "id": "REQ-15",
+      "text": "Verify that the frontend actor in `useActor.ts` / `useQueries.ts` is constructed with the authenticated identity (not anonymous) when the user is logged in via Internet Identity before calling `startUpload`. If the actor is being created anonymously even when the user is authenticated, ensure it is rebuilt with the correct identity so the backend receives a non-anonymous principal.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-latest"
+          "msg-1"
         ],
         "quotes": [
-          "What if you just redid the pdf Integration"
+          "Failed to start upload: Unauthorized: Only users can start uploads"
         ]
       },
       "acceptanceCriteria": [
-        "Uploading a 0.39 MB PDF completes successfully and shows the shareable link",
-        "Uploading a PDF larger than 2 MB completes successfully via chunked upload",
-        "A progress bar is visible during upload showing chunk progress",
-        "A descriptive error message is displayed if upload fails at any step",
-        "The user can retry a failed upload without refreshing the page"
-      ]
-    },
-    {
-      "id": "REQ-12",
-      "text": "Rewrite the frontend PDF retrieval and rendering flow in ViewerPage.tsx to use the new chunked retrieval backend API. Fetch the chunk count via getPdfChunks(shareId), then sequentially fetch each chunk via getPdfChunk(shareId, chunkIndex), reassemble all chunks into a single Blob, create an object URL, and render the PDF in an iframe. Show a loading progress indicator while chunks are being fetched. Display a clear error message if retrieval fails.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ],
-        "quotes": [
-          "What if you just redid the pdf Integration"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A previously uploaded PDF renders correctly in the iframe on the viewer page",
-        "A loading indicator is shown while chunks are being assembled",
-        "An error message is displayed if the PDF cannot be retrieved",
-        "The PDF title is displayed at the top of the page",
-        "The 'Next PDF' navigation button continues to function correctly"
-      ]
-    },
-    {
-      "id": "REQ-13",
-      "text": "Update the React Query hooks in useQueries.ts to expose the new chunked upload and chunked retrieval functions, replacing the old single-call upload and fetch hooks. Ensure the dashboard list, delete, and rename hooks continue to work with the updated backend API signatures.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ],
-        "quotes": [
-          "What if you just redid the pdf Integration"
-        ]
-      },
-      "acceptanceCriteria": [
-        "useQueries.ts exposes hooks for chunked upload (startUpload, uploadChunk, finalizeUpload)",
-        "useQueries.ts exposes hooks for chunked retrieval (getPdfChunks, getPdfChunk)",
-        "Dashboard list, delete, and rename operations continue to function correctly",
-        "No references to the old single-call upload/fetch API remain in the hooks file"
+        "After login via Internet Identity, the actor used for upload calls carries the authenticated principal.",
+        "The startUpload call is made with the authenticated actor, not an anonymous one.",
+        "No Unauthorized error appears in the browser console during a PDF upload attempt by a logged-in user."
       ]
     }
   ],
   "constraints": [
-    "All backend logic must remain in backend/main.mo (single-actor architecture)",
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui",
-    "Preserve all existing metadata fields: title, shareId, uploadTimestamp",
-    "Chunk size must not exceed 500 KB to stay within IC message size limits"
+    "Do not change the chunked upload API surface (startUpload, uploadChunk, finalizeUpload, getPdfChunks, getPdfChunk, listPdfs, deletePdf, renamePdf).",
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useActor.ts directly — propose safe alternatives if frontend actor construction needs adjustment.",
+    "Preserve all existing metadata fields: title, shareId, uploadTimestamp."
   ],
   "nonGoals": [
-    "Changing the visual theme or UI styling",
-    "Adding new pages or routes",
-    "Modifying the logo or header/footer components",
-    "Adding authentication changes"
+    "Changing the chunked upload chunk size or retry logic.",
+    "Modifying the PDF viewer or dashboard pages.",
+    "Adding new backend endpoints.",
+    "Altering the visual theme or UI layout."
   ],
   "imageRequirements": {
     "required": [],

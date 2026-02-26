@@ -11,9 +11,7 @@ import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 import MixinStorage "blob-storage/Mixin";
 import Storage "blob-storage/Storage";
-import Migration "migration";
 
-(with migration = Migration.run)
 actor {
   include MixinStorage();
 
@@ -90,8 +88,9 @@ actor {
   };
 
   public shared ({ caller }) func startUpload(uploadParams : UploadParams) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can start uploads");
+    // Accept all authenticated users except anonymous ones.
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Only authenticated users can start uploads");
     };
 
     switch (pdfMetadata.get(uploadParams.shareId)) {
@@ -113,8 +112,9 @@ actor {
   };
 
   public shared ({ caller }) func uploadChunk(shareId : Text, chunkIndex : Nat, chunkData : Chunk) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can upload chunks");
+    // Accept all authenticated users except anonymous ones.
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Only authenticated users can upload chunks");
     };
 
     switch (uploadStatuses.get(shareId)) {
@@ -130,8 +130,9 @@ actor {
   };
 
   public shared ({ caller }) func finalizeUpload(shareId : Text, file : Storage.ExternalBlob) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can finalize uploads");
+    // Accept all authenticated users except anonymous ones.
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Only authenticated users can finalize uploads");
     };
 
     switch (uploadStatuses.get(shareId)) {
